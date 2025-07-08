@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦕 Simple Dino Run - FIXED VERSION</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #fff;
+            border-radius: 12px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .controls {
+            margin: 20px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        .info {
+            font-size: 16px;
+            margin: 20px;
+        }
+        
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🦕 FIXED Dino Run - Starring YOU!</h1>
+    
+    <div class="score">
+        Score: <span id="score">0</span> | Lives: <span id="lives">3</span>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    
+    <div class="controls">
+        <button onclick="startGame()">🎮 Start Game</button>
+        <button onclick="toggleVoice()">🎤 Toggle Voice</button>
+        <button onclick="spawnObstacle()">🌵 Spawn Obstacle</button>
+    </div>
+    
+    <div class="info">
+        <p><strong>Controls:</strong> SPACE or SAY "JUMP" to jump over cacti</p>
+        <p><strong>Fixed:</strong> Proper obstacles, responsive controls, accurate scoring</p>
+        <div id="debug"></div>
+    </div>
+
+    <script>
+        // Simple, fixed game implementation
+        let canvas = document.getElementById('gameCanvas');
+        let ctx = canvas.getContext('2d');
+        let gameRunning = false;
+        let voiceEnabled = false;
+        let recognition = null;
+        
+        // Game state
+        let score = 0;
+        let lives = 3;
+        let gameSpeed = 2;
+        let lastObstacleTime = 0;
+        
+        // Dino (your character)
+        let dino = {
+            x: 100,
+            y: 300,
+            width: 40,
+            height: 50,
+            velocityY: 0,
+            onGround: true,
+            color: '#FF6B6B'
+        };
+        
+        // Ground
+        let groundY = 350;
+        let groundOffset = 0;
+        
+        // Obstacles
+        let obstacles = [];
+        
+        // Physics
+        let gravity = 0.8;
+        let jumpPower = -15;
+        
+        function updateGame() {
+            if (!gameRunning) return;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Update dino physics
+            updateDino();
+            
+            // Update obstacles
+            updateObstacles();
+            
+            // Spawn obstacles automatically
+            autoSpawnObstacles();
+            
+            // Check collisions
+            checkCollisions();
+            
+            // Draw everything
+            drawGround();
+            drawDino();
+            drawObstacles();
+            
+            // Update score
+            score += 1;
+            updateDisplay();
+            
+            requestAnimationFrame(updateGame);
+        }
+        
+        function updateDino() {
+            // Apply gravity
+            if (!dino.onGround) {
+                dino.velocityY += gravity;
+            }
+            
+            // Update position
+            dino.y += dino.velocityY;
+            
+            // Ground collision
+            if (dino.y >= groundY - dino.height) {
+                dino.y = groundY - dino.height;
+                dino.velocityY = 0;
+                dino.onGround = true;
+            }
+        }
+        
+        function updateObstacles() {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obstacle = obstacles[i];
+                obstacle.x -= gameSpeed;
+                
+                // Remove off-screen obstacles
+                if (obstacle.x + obstacle.width < 0) {
+                    obstacles.splice(i, 1);
+                    score += 10; // Bonus for passing obstacle
+                }
+            }
+        }
+        
+        function autoSpawnObstacles() {
+            let currentTime = Date.now();
+            if (currentTime - lastObstacleTime > 2000) { // Every 2 seconds
+                spawnObstacle();
+                lastObstacleTime = currentTime;
+            }
+        }
+        
+        function spawnObstacle() {
+            obstacles.push({
+                x: canvas.width,
+                y: groundY - 40,
+                width: 20,
+                height: 40,
+                color: '#2E7D32'
+            });
+            
+            document.getElementById('debug').innerHTML = `Obstacles: ${obstacles.length}`;
+        }
+        
+        function checkCollisions() {
+            for (let obstacle of obstacles) {
+                if (dino.x < obstacle.x + obstacle.width &&
+                    dino.x + dino.width > obstacle.x &&
+                    dino.y < obstacle.y + obstacle.height &&
+                    dino.y + dino.height > obstacle.y) {
+                    
+                    // Collision detected
+                    lives--;
+                    
+                    // Remove the obstacle
+                    let index = obstacles.indexOf(obstacle);
+                    if (index > -1) {
+                        obstacles.splice(index, 1);
+                    }
+                    
+                    // Flash dino red
+                    dino.color = '#FF0000';
+                    setTimeout(() => {
+                        dino.color = '#FF6B6B';
+                    }, 500);
+                    
+                    if (lives <= 0) {
+                        gameOver();
+                    }
+                    
+                    break;
+                }
+            }
+        }
+        
+        function drawGround() {
+            // Scrolling ground
+            groundOffset -= gameSpeed;
+            if (groundOffset <= -40) groundOffset = 0;
+            
+            ctx.fillStyle = '#8D6E63';
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+            
+            // Ground line
+            ctx.strokeStyle = '#5D4037';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.stroke();
+            
+            // Ground details
+            ctx.fillStyle = '#6D4C41';
+            for (let x = groundOffset; x < canvas.width; x += 40) {
+                ctx.fillRect(x, groundY + 5, 30, 3);
+            }
+        }
+        
+        function drawDino() {
+            // Your custom character
+            ctx.fillStyle = dino.color;
+            
+            // Body
+            ctx.fillRect(dino.x + 10, dino.y + 20, 20, 25);
+            
+            // Head
+            ctx.fillStyle = '#FFDBAC'; // Skin tone
+            ctx.fillRect(dino.x + 8, dino.y, 24, 20);
+            
+            // Beard (from your photo!)
+            ctx.fillStyle = '#2A1A0A';
+            ctx.fillRect(dino.x + 10, dino.y + 15, 20, 8);
+            
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(dino.x + 12, dino.y + 5, 2, 2);
+            ctx.fillRect(dino.x + 18, dino.y + 5, 2, 2);
+            
+            // Legs (running animation)
+            ctx.fillStyle = '#2C3E50';
+            let legOffset = Math.sin(Date.now() * 0.02) * 2;
+            ctx.fillRect(dino.x + 12, dino.y + 45, 4, 8 + legOffset);
+            ctx.fillRect(dino.x + 20, dino.y + 45, 4, 8 - legOffset);
+        }
+        
+        function drawObstacles() {
+            for (let obstacle of obstacles) {
+                // Cactus
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // Cactus arms
+                ctx.fillRect(obstacle.x - 5, obstacle.y + 10, 8, 4);
+                ctx.fillRect(obstacle.x + obstacle.width - 3, obstacle.y + 20, 8, 4);
+                
+                // Spikes
+                ctx.fillStyle = '#1B5E20';
+                for (let i = 0; i < 3; i++) {
+                    ctx.fillRect(obstacle.x + 2, obstacle.y + i * 12, 2, 3);
+                    ctx.fillRect(obstacle.x + obstacle.width - 4, obstacle.y + i * 12, 2, 3);
+                }
+            }
+        }
+        
+        function jump() {
+            if (dino.onGround) {
+                dino.velocityY = jumpPower;
+                dino.onGround = false;
+                console.log('🦘 JUMP!');
+                return true;
+            }
+            return false;
+        }
+        
+        function startGame() {
+            if (gameRunning) {
+                gameRunning = false;
+                document.querySelector('button').textContent = '🎮 Start Game';
+                return;
+            }
+            
+            // Reset game
+            score = 0;
+            lives = 3;
+            obstacles = [];
+            dino.y = groundY - dino.height;
+            dino.velocityY = 0;
+            dino.onGround = true;
+            lastObstacleTime = Date.now();
+            
+            gameRunning = true;
+            document.querySelector('button').textContent = '⏸️ Stop Game';
+            updateGame();
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            document.querySelector('button').textContent = '🎮 Start Game';
+            alert(`Game Over! Final Score: ${score}`);
+        }
+        
+        function updateDisplay() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+        }
+        
+        function toggleVoice() {
+            if (!voiceEnabled) {
+                startVoiceRecognition();
+            } else {
+                stopVoiceRecognition();
+            }
+        }
+        
+        function startVoiceRecognition() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('Voice recognition not supported in this browser');
+                return;
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            
+            recognition.onresult = function(event) {
+                const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                
+                if (transcript.includes('jump') || transcript.includes('hop') || transcript.includes('up')) {
+                    jump();
+                    document.getElementById('debug').innerHTML = `Voice detected: "${transcript}"`;
+                }
+            };
+            
+            recognition.onerror = function(event) {
+                console.error('Voice error:', event.error);
+            };
+            
+            recognition.onend = function() {
+                if (voiceEnabled) {
+                    setTimeout(() => recognition.start(), 100);
+                }
+            };
+            
+            recognition.start();
+            voiceEnabled = true;
+            document.querySelector('button[onclick="toggleVoice()"]').textContent = '🔇 Stop Voice';
+            document.getElementById('debug').innerHTML = 'Voice enabled - say "JUMP"!';
+        }
+        
+        function stopVoiceRecognition() {
+            if (recognition) {
+                recognition.stop();
+                voiceEnabled = false;
+                document.querySelector('button[onclick="toggleVoice()"]').textContent = '🎤 Toggle Voice';
+                document.getElementById('debug').innerHTML = 'Voice disabled';
+            }
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                jump();
+            }
+        });
+        
+        // Canvas click
+        canvas.addEventListener('click', function() {
+            jump();
+        });
+        
+        // Initialize display
+        updateDisplay();
+    </script>
+</body>
+</html>

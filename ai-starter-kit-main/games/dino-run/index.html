@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 Vii Sports Arcade - Voice-Controlled Games</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>Loading Vii Sports Arcade...</h2>
+            <p>Preparing your voice-controlled gaming experience</p>
+        </div>
+    </div>
+
+    <!-- Game Container -->
+    <div class="game-container" id="gameContainer">
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <!-- Game UI Overlay -->
+        <div class="game-ui-overlay">
+            <!-- Score Display -->
+            <div class="score-display">
+                <div class="score-item">
+                    <span class="score-label">Score:</span>
+                    <span class="score-value" id="scoreValue">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">Strikes:</span>
+                    <span class="strikes-value" id="strikesValue">0/3</span>
+                </div>
+            </div>
+
+            <!-- Control Instructions -->
+            <div class="control-instructions">
+                <div class="instruction-item">
+                    <span class="instruction-icon">🎤</span>
+                    <span class="instruction-text">Say "JUMP" or "FLAP"</span>
+                </div>
+                <div class="instruction-item">
+                    <span class="instruction-icon">⌨️</span>
+                    <span class="instruction-text">Press SPACE for backup</span>
+                </div>
+            </div>
+
+            <!-- Game Controls -->
+            <div class="game-controls">
+                <button class="control-btn" id="pauseBtn">⏸️ Pause</button>
+                <button class="control-btn" id="restartBtn">🔄 Restart</button>
+                <button class="control-btn" id="debugBtn">🐛 Debug</button>
+            </div>
+        </div>
+
+        <!-- Voice Status Indicator -->
+        <div class="voice-status" id="voiceStatus">
+            <div class="voice-icon">🎤</div>
+            <div class="voice-text">Voice: OFF</div>
+            <button class="voice-toggle" id="voiceToggle">Enable Voice</button>
+        </div>
+    </div>
+
+    <!-- Engine Test Area (for development) -->
+    <div class="test-area" id="testArea">
+        <h3>🔧 Engine Test Console</h3>
+        <div class="test-controls">
+            <button class="test-btn" id="startEngineBtn">Start Engine</button>
+            <button class="test-btn" id="stopEngineBtn">Stop Engine</button>
+            <button class="test-btn" id="addTestEntityBtn">Add Test Entity</button>
+            <button class="test-btn" id="toggleDebugBtn">Toggle Debug</button>
+        </div>
+        
+        <div class="test-stats" id="testStats">
+            <div class="stat-item">FPS: <span id="fpsCounter">0</span></div>
+            <div class="stat-item">Entities: <span id="entityCounter">0</span></div>
+            <div class="stat-item">Update Time: <span id="updateTime">0ms</span></div>
+            <div class="stat-item">Render Time: <span id="renderTime">0ms</span></div>
+        </div>
+        
+        <div class="test-log" id="testLog">
+            <h4>Engine Log:</h4>
+            <div class="log-content" id="logContent"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="engine/Physics.js"></script>
+    <script src="engine/Entity.js"></script>
+    <script src="engine/GameEngine.js"></script>
+    <script src="entities/Dino.js"></script>
+    <script src="entities/Obstacle.js"></script>
+    <script src="entities/Ground.js"></script>
+    <script src="audio/SpeechRecognizer.js"></script>
+    <script src="audio/VoiceController.js"></script>
+    <script src="games/DinoRun.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

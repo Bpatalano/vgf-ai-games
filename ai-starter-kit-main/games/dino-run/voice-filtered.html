@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 Smart Voice Control - Noise Filtered</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #222;
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #fff;
+            background: #87CEEB;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        .status {
+            background: #333;
+            padding: 15px;
+            margin: 20px auto;
+            border-radius: 10px;
+            max-width: 600px;
+            font-size: 16px;
+        }
+        
+        .listening { background: #4CAF50; }
+        .detected { background: #FF9800; }
+        .valid { background: #E91E63; }
+        .noise { background: #666; }
+        
+        .calibration {
+            background: #2196F3;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        
+        .debug {
+            background: #111;
+            padding: 10px;
+            margin: 10px auto;
+            border-radius: 5px;
+            max-width: 600px;
+            font-family: monospace;
+            font-size: 12px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎤 Smart Voice Control with Noise Filtering</h1>
+    
+    <canvas id="gameCanvas" width="600" height="300"></canvas>
+    
+    <div>
+        <button onclick="calibrateNoise()">🔧 Calibrate Background Noise</button>
+        <button onclick="startVoice()">🎤 Start Voice</button>
+        <button onclick="stopVoice()">🔇 Stop Voice</button>
+        <button onclick="manualJump()">🦘 Manual Jump</button>
+    </div>
+    
+    <div class="status" id="status">First click "Calibrate Background Noise" then "Start Voice"</div>
+    
+    <div class="debug" id="debug">
+        <strong>Voice Analysis:</strong><br>
+        Background noise level: Not calibrated<br>
+        Current audio level: 0<br>
+        Voice threshold: Not set<br>
+        Last detection: None
+    </div>
+    
+    <div style="margin: 20px; font-size: 14px;">
+        <p><strong>How to use:</strong></p>
+        <p>1. 🔧 <strong>Calibrate first</strong> - Be quiet for 3 seconds to measure background noise</p>
+        <p>2. 🎤 <strong>Start voice</strong> - Now it knows what's background vs real speech</p>
+        <p>3. 🗣️ <strong>Say "JUMP" clearly</strong> - Only responds to actual words, not noise</p>
+    </div>
+
+    <script>
+        let canvas = document.getElementById('gameCanvas');
+        let ctx = canvas.getContext('2d');
+        let recognition = null;
+        let isVoiceActive = false;
+        let lastJumpTime = 0;
+        let jumpCooldown = 300;
+        
+        // Noise filtering variables
+        let backgroundNoiseLevel = null;
+        let voiceThreshold = null;
+        let isCalibrating = false;
+        let audioContext = null;
+        let analyser = null;
+        let microphone = null;
+        let dataArray = null;
+        
+        // Character
+        let character = {
+            x: 100,
+            y: 200,
+            width: 40,
+            height: 40,
+            jumpHeight: 0,
+            isJumping: false
+        };
+        
+        // Audio level monitoring
+        function initAudioAnalysis() {
+            return navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioContext.createAnalyser();
+                    microphone = audioContext.createMediaStreamSource(stream);
+                    
+                    analyser.fftSize = 256;
+                    const bufferLength = analyser.frequencyBinCount;
+                    dataArray = new Uint8Array(bufferLength);
+                    
+                    microphone.connect(analyser);
+                    
+                    return true;
+                })
+                .catch(error => {
+                    updateStatus('❌ Microphone access denied for audio analysis');
+                    return false;
+                });
+        }
+        
+        function getAudioLevel() {
+            if (!analyser || !dataArray) return 0;
+            
+            analyser.getByteFrequencyData(dataArray);
+            
+            // Calculate average audio level
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            }
+            return sum / dataArray.length;
+        }
+        
+        async function calibrateNoise() {
+            updateStatus('🔧 Initializing audio analysis...', 'calibration');
+            
+            const audioReady = await initAudioAnalysis();
+            if (!audioReady) return;
+            
+            updateStatus('🤫 CALIBRATING: Be quiet for 3 seconds...', 'calibration');
+            updateDebug('Calibrating background noise...', 'Starting calibration');
+            
+            isCalibrating = true;
+            let samples = [];
+            let sampleCount = 0;
+            let maxSamples = 150; // 3 seconds at ~50fps
+            
+            const calibrationInterval = setInterval(() => {
+                const audioLevel = getAudioLevel();
+                samples.push(audioLevel);
+                sampleCount++;
+                
+                updateStatus(`🤫 CALIBRATING: ${Math.ceil((maxSamples - sampleCount) / 50)} seconds remaining...`, 'calibration');
+                updateDebug(`Sampling background noise: ${audioLevel.toFixed(1)}`, `Sample ${sampleCount}/${maxSamples}`);
+                
+                if (sampleCount >= maxSamples) {
+                    clearInterval(calibrationInterval);
+                    
+                    // Calculate background noise level
+                    backgroundNoiseLevel = samples.reduce((a, b) => a + b) / samples.length;
+                    voiceThreshold = backgroundNoiseLevel + 15; // Voice must be 15 units above background
+                    
+                    isCalibrating = false;
+                    updateStatus(`✅ Calibrated! Background: ${backgroundNoiseLevel.toFixed(1)}, Threshold: ${voiceThreshold.toFixed(1)}`, 'detected');
+                    updateDebug(`Background noise: ${backgroundNoiseLevel.toFixed(1)}`, `Voice threshold: ${voiceThreshold.toFixed(1)}`);
+                    
+                    // Start continuous monitoring
+                    startAudioMonitoring();
+                }
+            }, 20);
+        }
+        
+        function startAudioMonitoring() {
+            setInterval(() => {
+                if (backgroundNoiseLevel !== null) {
+                    const currentLevel = getAudioLevel();
+                    const isAboveThreshold = currentLevel > voiceThreshold;
+                    
+                    updateDebug(
+                        `Background: ${backgroundNoiseLevel.toFixed(1)} | Current: ${currentLevel.toFixed(1)} | Threshold: ${voiceThreshold.toFixed(1)}`,
+                        `Above threshold: ${isAboveThreshold ? 'YES' : 'NO'}`
+                    );
+                }
+            }, 100);
+        }
+        
+        function isValidVoiceLevel() {
+            if (backgroundNoiseLevel === null) return true; // No calibration, allow all
+            
+            const currentLevel = getAudioLevel();
+            return currentLevel > voiceThreshold;
+        }
+        
+        function startVoice() {
+            if (isVoiceActive) return;
+            
+            if (backgroundNoiseLevel === null) {
+                updateStatus('⚠️ Please calibrate background noise first!');
+                return;
+            }
+            
+            if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
+                updateStatus('❌ Voice not supported');
+                return;
+            }
+            
+            try {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+                recognition.maxAlternatives = 1;
+                
+                recognition.onstart = function() {
+                    isVoiceActive = true;
+                    updateStatus('🎤 SMART LISTENING - Only responds to clear "JUMP" commands!', 'listening');
+                };
+                
+                recognition.onresult = function(event) {
+                    const currentTime = Date.now();
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const result = event.results[i];
+                        const transcript = result[0].transcript.toLowerCase().trim();
+                        const confidence = result[0].confidence || 0;
+                        const isFinal = result.isFinal;
+                        
+                        // Check if this is valid voice (above background noise)
+                        const isValidVoice = isValidVoiceLevel();
+                        
+                        if (transcript && transcript.length > 0) {
+                            updateDebug(
+                                `Heard: "${transcript}" (${isFinal ? 'final' : 'interim'})`,
+                                `Confidence: ${(confidence * 100).toFixed(0)}% | Valid voice: ${isValidVoice ? 'YES' : 'NO'}`
+                            );
+                            
+                            if (!isValidVoice) {
+                                updateStatus(`🔇 Noise filtered: "${transcript}"`, 'noise');
+                                continue;
+                            }
+                            
+                            updateStatus(`🎤 Hearing: "${transcript}" (${isValidVoice ? 'valid voice' : 'background noise'})`, 
+                                       isValidVoice ? 'detected' : 'noise');
+                        }
+                        
+                        // Only process if it's valid voice and a jump command
+                        if (isValidVoice && isJumpCommand(transcript) && canJump(currentTime)) {
+                            jump();
+                            lastJumpTime = currentTime;
+                            updateStatus(`⚡ VALID JUMP! "${transcript}" (conf: ${(confidence * 100).toFixed(0)}%)`, 'valid');
+                            updateDebug(`JUMP EXECUTED: "${transcript}"`, `Confidence: ${(confidence * 100).toFixed(0)}%`);
+                            
+                            setTimeout(() => {
+                                if (isVoiceActive) {
+                                    updateStatus('🎤 SMART LISTENING - Only responds to clear "JUMP" commands!', 'listening');
+                                }
+                            }, 1500);
+                            
+                            break;
+                        }
+                    }
+                };
+                
+                recognition.onerror = function(event) {
+                    if (event.error === 'not-allowed') {
+                        updateStatus('❌ Microphone permission denied');
+                        isVoiceActive = false;
+                        return;
+                    }
+                    
+                    if (event.error !== 'no-speech') {
+                        updateDebug(`Voice error: ${event.error}`, 'Still listening...');
+                    }
+                };
+                
+                recognition.onend = function() {
+                    if (isVoiceActive) {
+                        setTimeout(() => {
+                            if (isVoiceActive) {
+                                try {
+                                    recognition.start();
+                                } catch (e) {
+                                    setTimeout(() => startVoice(), 1000);
+                                }
+                            }
+                        }, 100);
+                    }
+                };
+                
+                recognition.start();
+                
+            } catch (error) {
+                updateStatus('❌ Voice error: ' + error.message);
+            }
+        }
+        
+        function isJumpCommand(transcript) {
+            // Strict jump command detection
+            const jumpCommands = [
+                'jump', 'jumping', 'jumped',
+                'hop', 'hopping', 'hopped',
+                'up', 'go up',
+                'leap', 'leaping'
+            ];
+            
+            // Must be an exact match or contain the word with word boundaries
+            return jumpCommands.some(cmd => {
+                return transcript === cmd || 
+                       transcript.includes(' ' + cmd + ' ') ||
+                       transcript.startsWith(cmd + ' ') ||
+                       transcript.endsWith(' ' + cmd) ||
+                       (transcript.includes(cmd) && transcript.length <= cmd.length + 2);
+            });
+        }
+        
+        function canJump(currentTime) {
+            return (currentTime - lastJumpTime) > jumpCooldown;
+        }
+        
+        function stopVoice() {
+            isVoiceActive = false;
+            if (recognition) {
+                recognition.stop();
+            }
+            updateStatus('🔇 Voice stopped');
+        }
+        
+        function jump() {
+            if (!character.isJumping) {
+                character.isJumping = true;
+                character.jumpHeight = 80;
+                
+                let jumpAnimation = setInterval(() => {
+                    character.jumpHeight -= 4;
+                    if (character.jumpHeight <= 0) {
+                        character.jumpHeight = 0;
+                        character.isJumping = false;
+                        clearInterval(jumpAnimation);
+                    }
+                    draw();
+                }, 20);
+            }
+        }
+        
+        function manualJump() {
+            jump();
+            updateStatus('🦘 Manual jump!', 'detected');
+        }
+        
+        function updateStatus(message, className = '') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${className}`;
+        }
+        
+        function updateDebug(line1, line2) {
+            const debugEl = document.getElementById('debug');
+            const timestamp = new Date().toLocaleTimeString();
+            debugEl.innerHTML = `
+                <strong>Voice Analysis:</strong><br>
+                Background noise level: ${backgroundNoiseLevel ? backgroundNoiseLevel.toFixed(1) : 'Not calibrated'}<br>
+                Current audio level: ${backgroundNoiseLevel ? getAudioLevel().toFixed(1) : '0'}<br>
+                Voice threshold: ${voiceThreshold ? voiceThreshold.toFixed(1) : 'Not set'}<br>
+                [${timestamp}] ${line1}<br>
+                ${line2 || ''}
+            `;
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 250, canvas.width, 50);
+            
+            const charY = character.y - character.jumpHeight;
+            
+            ctx.fillStyle = '#FF6B6B';
+            ctx.fillRect(character.x, charY, character.width, character.height);
+            
+            ctx.fillStyle = '#FFDBAC';
+            ctx.fillRect(character.x + 5, charY - 20, 30, 20);
+            
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(character.x + 8, charY - 8, 24, 12);
+            
+            ctx.fillStyle = '#000';
+            ctx.fillRect(character.x + 10, charY - 15, 3, 3);
+            ctx.fillRect(character.x + 20, charY - 15, 3, 3);
+            
+            if (character.isJumping) {
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 20px Arial';
+                ctx.fillText('SMART JUMP!', character.x - 20, charY - 30);
+            }
+        }
+        
+        draw();
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                manualJump();
+            }
+        });
+        
+        console.log('Smart voice control with noise filtering ready');
+    </script>
+</body>
+</html>

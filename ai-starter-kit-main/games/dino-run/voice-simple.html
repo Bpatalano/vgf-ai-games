@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 Simple Voice Control - No Freeze</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #222;
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #fff;
+            background: #87CEEB;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        .status {
+            background: #333;
+            padding: 15px;
+            margin: 20px auto;
+            border-radius: 10px;
+            max-width: 500px;
+            font-size: 18px;
+        }
+        
+        .listening { background: #4CAF50; }
+        .detected { background: #FF9800; }
+    </style>
+</head>
+<body>
+    <h1>🎤 STABLE Voice Control Test</h1>
+    
+    <canvas id="gameCanvas" width="600" height="300"></canvas>
+    
+    <div>
+        <button onclick="startVoice()">🎤 Start Voice</button>
+        <button onclick="stopVoice()">🔇 Stop Voice</button>
+        <button onclick="manualJump()">🦘 Manual Jump</button>
+    </div>
+    
+    <div class="status" id="status">Click "Start Voice" then say "JUMP"</div>
+    
+    <div style="margin: 20px; font-size: 14px;">
+        <p><strong>How to use:</strong></p>
+        <p>1. Click "Start Voice" and allow microphone</p>
+        <p>2. Say "JUMP" clearly and loudly</p>
+        <p>3. Watch the character jump immediately</p>
+        <p>4. If it stops responding, click "Stop" then "Start" again</p>
+    </div>
+
+    <script>
+        let canvas = document.getElementById('gameCanvas');
+        let ctx = canvas.getContext('2d');
+        let recognition = null;
+        let isVoiceActive = false;
+        
+        // Simple character
+        let character = {
+            x: 100,
+            y: 200,
+            width: 40,
+            height: 40,
+            jumpHeight: 0,
+            isJumping: false
+        };
+        
+        // Simple, stable voice recognition
+        function startVoice() {
+            if (isVoiceActive) return;
+            
+            if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
+                updateStatus('❌ Voice not supported');
+                return;
+            }
+            
+            try {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                // Simple settings - no continuous mode to prevent freezing
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+                
+                recognition.onstart = function() {
+                    isVoiceActive = true;
+                    updateStatus('🎤 LISTENING - Say "JUMP"', 'listening');
+                };
+                
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript.toLowerCase();
+                    updateStatus(`Heard: "${transcript}"`, 'detected');
+                    
+                    // Simple word matching
+                    if (transcript.includes('jump') || 
+                        transcript.includes('hop') || 
+                        transcript.includes('up')) {
+                        
+                        jump();
+                        updateStatus('🦘 JUMP DETECTED!', 'detected');
+                        
+                        setTimeout(() => {
+                            if (isVoiceActive) {
+                                restartListening();
+                            }
+                        }, 500);
+                    } else {
+                        setTimeout(() => {
+                            if (isVoiceActive) {
+                                restartListening();
+                            }
+                        }, 1000);
+                    }
+                };
+                
+                recognition.onerror = function(event) {
+                    console.log('Voice error:', event.error);
+                    if (event.error === 'not-allowed') {
+                        updateStatus('❌ Microphone permission denied');
+                        isVoiceActive = false;
+                        return;
+                    }
+                    
+                    // Restart on other errors
+                    setTimeout(() => {
+                        if (isVoiceActive) {
+                            restartListening();
+                        }
+                    }, 1000);
+                };
+                
+                recognition.onend = function() {
+                    // Don't auto-restart here to prevent loops
+                };
+                
+                recognition.start();
+                
+            } catch (error) {
+                updateStatus('❌ Voice error: ' + error.message);
+            }
+        }
+        
+        function restartListening() {
+            if (!isVoiceActive) return;
+            
+            try {
+                recognition.start();
+                updateStatus('🎤 LISTENING - Say "JUMP"', 'listening');
+            } catch (error) {
+                console.log('Restart error:', error.message);
+                // If restart fails, wait longer
+                setTimeout(() => {
+                    if (isVoiceActive) {
+                        restartListening();
+                    }
+                }, 2000);
+            }
+        }
+        
+        function stopVoice() {
+            isVoiceActive = false;
+            if (recognition) {
+                recognition.stop();
+            }
+            updateStatus('🔇 Voice stopped');
+        }
+        
+        function jump() {
+            if (!character.isJumping) {
+                character.isJumping = true;
+                character.jumpHeight = 80;
+                
+                // Animate jump
+                let jumpAnimation = setInterval(() => {
+                    character.jumpHeight -= 4;
+                    if (character.jumpHeight <= 0) {
+                        character.jumpHeight = 0;
+                        character.isJumping = false;
+                        clearInterval(jumpAnimation);
+                    }
+                    draw();
+                }, 20);
+            }
+        }
+        
+        function manualJump() {
+            jump();
+            updateStatus('🦘 Manual jump!', 'detected');
+        }
+        
+        function updateStatus(message, className = '') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${className}`;
+            console.log(message);
+        }
+        
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw ground
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 250, canvas.width, 50);
+            
+            // Draw character (you with beard!)
+            const charY = character.y - character.jumpHeight;
+            
+            // Body
+            ctx.fillStyle = '#FF6B6B';
+            ctx.fillRect(character.x, charY, character.width, character.height);
+            
+            // Head
+            ctx.fillStyle = '#FFDBAC';
+            ctx.fillRect(character.x + 5, charY - 20, 30, 20);
+            
+            // Beard
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(character.x + 8, charY - 8, 24, 12);
+            
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(character.x + 10, charY - 15, 3, 3);
+            ctx.fillRect(character.x + 20, charY - 15, 3, 3);
+            
+            // Jump indicator
+            if (character.isJumping) {
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 20px Arial';
+                ctx.fillText('JUMP!', character.x - 10, charY - 30);
+            }
+        }
+        
+        // Initial draw
+        draw();
+        
+        // Keyboard backup
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                manualJump();
+            }
+        });
+        
+        console.log('Simple voice control ready');
+        console.log('This version uses non-continuous recognition to prevent freezing');
+    </script>
+</body>
+</html>

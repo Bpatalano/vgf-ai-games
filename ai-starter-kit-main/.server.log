@@ -1,0 +1,12 @@
+::1 - - [08/Jul/2025 10:52:01] "GET /bop-it/index.html HTTP/1.1" 200 -
+::1 - - [08/Jul/2025 10:52:01] "GET /bop-it/css/style.css HTTP/1.1" 200 -
+::1 - - [08/Jul/2025 10:52:01] "GET /bop-it/js/main.js HTTP/1.1" 200 -
+::1 - - [08/Jul/2025 10:52:01] "GET /bop-it/js/GameEngine.js HTTP/1.1" 200 -
+::1 - - [08/Jul/2025 10:52:01] "GET /bop-it/js/VoiceRecognition.js HTTP/1.1" 200 -
+::1 - - [08/Jul/2025 10:52:01] "GET /bop-it/js/AudioManager.js HTTP/1.1" 200 -
+::1 - - [08/Jul/2025 10:58:55] "GET /bop-it/index.html HTTP/1.1" 304 -
+::1 - - [08/Jul/2025 10:58:55] "GET /bop-it/js/main.js HTTP/1.1" 200 -
+::1 - - [08/Jul/2025 10:58:55] "GET /bop-it/css/style.css HTTP/1.1" 200 -
+::1 - - [08/Jul/2025 10:58:55] "GET /bop-it/js/VoiceRecognition.js HTTP/1.1" 304 -
+::1 - - [08/Jul/2025 10:58:55] "GET /bop-it/js/GameEngine.js HTTP/1.1" 304 -
+::1 - - [08/Jul/2025 10:58:55] "GET /bop-it/js/AudioManager.js HTTP/1.1" 304 -

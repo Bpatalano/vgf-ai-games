@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 Simple Jump Detection</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #222;
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #fff;
+            background: #87CEEB;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        .status {
+            background: #333;
+            padding: 15px;
+            margin: 20px auto;
+            border-radius: 10px;
+            max-width: 500px;
+            font-size: 18px;
+        }
+        
+        .listening { background: #4CAF50; }
+        .jump { background: #FF5722; }
+    </style>
+</head>
+<body>
+    <h1>🎤 SIMPLE Jump Detection</h1>
+    
+    <canvas id="gameCanvas" width="600" height="300"></canvas>
+    
+    <div>
+        <button onclick="startVoice()">🎤 Start Voice</button>
+        <button onclick="stopVoice()">🔇 Stop Voice</button>
+        <button onclick="manualJump()">🦘 Test Jump</button>
+    </div>
+    
+    <div class="status" id="status">Click "Start Voice" and say "JUMP"</div>
+    
+    <div style="margin: 20px; font-size: 14px;">
+        <p><strong>Ultra Simple:</strong> Just detects "J" sound and jumps immediately</p>
+        <p><strong>Say:</strong> "JUMP", "JUP", "JAMP" - anything starting with "J" sound</p>
+    </div>
+
+    <script>
+        let canvas = document.getElementById('gameCanvas');
+        let ctx = canvas.getContext('2d');
+        let recognition = null;
+        let isVoiceActive = false;
+        let lastJumpTime = 0;
+        let jumpCooldown = 400; // Prevent spam
+        
+        // Character
+        let character = {
+            x: 100,
+            y: 200,
+            width: 40,
+            height: 40,
+            jumpHeight: 0,
+            isJumping: false
+        };
+        
+        function startVoice() {
+            if (isVoiceActive) return;
+            
+            if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
+                updateStatus('❌ Voice not supported');
+                return;
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            
+            // Simple settings for fastest response
+            recognition.continuous = true;
+            recognition.interimResults = true; // Get partial results immediately
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = function() {
+                isVoiceActive = true;
+                updateStatus('🎤 LISTENING - Say "JUMP" (responds to "J" sound)', 'listening');
+            };
+            
+            recognition.onresult = function(event) {
+                const currentTime = Date.now();
+                
+                // Check if we can jump (cooldown)
+                if (currentTime - lastJumpTime < jumpCooldown) {
+                    return;
+                }
+                
+                // Get the latest result
+                const result = event.results[event.results.length - 1];
+                const transcript = result[0].transcript.toLowerCase();
+                
+                // Ultra simple detection - just look for "J" sound at start
+                if (transcript && (
+                    transcript.startsWith('j') ||    // "jump", "jup", etc.
+                    transcript.startsWith(' j') ||   // " jump" with space
+                    transcript.includes('jump') ||   // contains "jump"
+                    transcript.includes('jum') ||    // partial "jum"
+                    transcript.includes('jup')       // misheard "jup"
+                )) {
+                    jump();
+                    lastJumpTime = currentTime;
+                    updateStatus(`🦘 JUMP! Heard: "${transcript}"`, 'jump');
+                    
+                    // Reset status after jump
+                    setTimeout(() => {
+                        if (isVoiceActive) {
+                            updateStatus('🎤 LISTENING - Say "JUMP" (responds to "J" sound)', 'listening');
+                        }
+                    }, 1000);
+                }
+            };
+            
+            recognition.onerror = function(event) {
+                if (event.error === 'not-allowed') {
+                    updateStatus('❌ Microphone permission denied');
+                    isVoiceActive = false;
+                    return;
+                }
+                // Ignore other errors and keep listening
+            };
+            
+            recognition.onend = function() {
+                // Auto-restart to keep listening
+                if (isVoiceActive) {
+                    setTimeout(() => {
+                        if (isVoiceActive) {
+                            try {
+                                recognition.start();
+                            } catch (e) {
+                                // Try again if restart fails
+                                setTimeout(() => startVoice(), 500);
+                            }
+                        }
+                    }, 100);
+                }
+            };
+            
+            try {
+                recognition.start();
+            } catch (error) {
+                updateStatus('❌ Voice start error: ' + error.message);
+            }
+        }
+        
+        function stopVoice() {
+            isVoiceActive = false;
+            if (recognition) {
+                recognition.stop();
+            }
+            updateStatus('🔇 Voice stopped');
+        }
+        
+        function jump() {
+            if (!character.isJumping) {
+                character.isJumping = true;
+                character.jumpHeight = 80;
+                
+                console.log('JUMP executed at:', new Date().toLocaleTimeString());
+                
+                // Animate jump
+                let jumpAnimation = setInterval(() => {
+                    character.jumpHeight -= 4;
+                    if (character.jumpHeight <= 0) {
+                        character.jumpHeight = 0;
+                        character.isJumping = false;
+                        clearInterval(jumpAnimation);
+                    }
+                    draw();
+                }, 16); // ~60fps
+            }
+        }
+        
+        function manualJump() {
+            jump();
+            updateStatus('🦘 Manual jump test!', 'jump');
+        }
+        
+        function updateStatus(message, className = '') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${className}`;
+            console.log(message);
+        }
+        
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw ground
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 250, canvas.width, 50);
+            
+            // Draw character
+            const charY = character.y - character.jumpHeight;
+            
+            // Body
+            ctx.fillStyle = '#FF6B6B';
+            ctx.fillRect(character.x, charY, character.width, character.height);
+            
+            // Head  
+            ctx.fillStyle = '#FFDBAC';
+            ctx.fillRect(character.x + 5, charY - 20, 30, 20);
+            
+            // Beard (from your photo!)
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(character.x + 8, charY - 8, 24, 12);
+            
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(character.x + 10, charY - 15, 3, 3);
+            ctx.fillRect(character.x + 20, charY - 15, 3, 3);
+            
+            // Jump indicator
+            if (character.isJumping) {
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText('J-JUMP!', character.x - 5, charY - 30);
+            }
+        }
+        
+        // Initial draw
+        draw();
+        
+        // Keyboard backup (space bar)
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                manualJump();
+            }
+        });
+        
+        console.log('Ultra simple voice jump detection ready');
+        console.log('Responds to any word starting with "J" sound');
+    </script>
+</body>
+</html>

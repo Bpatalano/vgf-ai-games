@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦕 Voice-Controlled Dino Run - WORKING VERSION</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0F0F23 0%, #1A1A2E 25%, #16213E 75%, #0F0F23 100%);
+            color: #E2E8F0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 60%, rgba(34, 197, 94, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .game-layout {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+        }
+        
+        .game-main {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .game-sidebar {
+            width: 350px;
+            flex-shrink: 0;
+        }
+        
+        .intro-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0F0F23 0%, #1A1A2E 25%, #16213E 75%, #0F0F23 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .intro-screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 30% 30%, rgba(56, 189, 248, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 70% 70%, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        
+        .intro-content {
+            position: relative;
+            z-index: 10;
+            max-width: 800px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.4);
+        }
+        
+        .intro-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #38BDF8 0%, #8B5CF6 50%, #22C55E 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(56, 189, 248, 0.3);
+        }
+        
+        .intro-subtitle {
+            font-size: 1.5rem;
+            color: #94A3B8;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .intro-description {
+            font-size: 1.25rem;
+            color: #E2E8F0;
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+        
+        .intro-twist {
+            font-size: 1.3rem;
+            color: #FCD34D;
+            font-weight: 600;
+            margin-bottom: 3rem;
+            padding: 1.5rem;
+            background: rgba(252, 211, 77, 0.1);
+            border: 1px solid rgba(252, 211, 77, 0.3);
+            border-radius: 16px;
+        }
+        
+        .start-button {
+            background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
+            color: white;
+            border: none;
+            padding: 1.5rem 3rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(34, 197, 94, 0.3);
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .start-button:hover {
+            background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 48px rgba(34, 197, 94, 0.4);
+        }
+        
+        .start-button:active {
+            transform: translateY(0);
+        }
+        
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #38BDF8 0%, #8B5CF6 50%, #22C55E 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(56, 189, 248, 0.3);
+        }
+        
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #94A3B8;
+        }
+        
+        #gameCanvas {
+            border: 2px solid rgba(56, 189, 248, 0.3);
+            border-radius: 20px;
+            background: linear-gradient(to bottom, 
+                #87CEEB 0%, 
+                #98FB98 100%);
+            display: block;
+            margin: 2rem auto;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(56, 189, 248, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        #gameCanvas:hover {
+            box-shadow: 
+                0 32px 64px -12px rgba(0, 0, 0, 0.6),
+                0 0 0 1px rgba(56, 189, 248, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #1E293B 0%, #334155 100%);
+            color: #E2E8F0;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            font-family: 'Inter', sans-serif;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        button:hover {
+            background: linear-gradient(135deg, #334155 0%, #475569 100%);
+            border-color: rgba(56, 189, 248, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .voice-listening {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
+            border-color: rgba(239, 68, 68, 0.4) !important;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { 
+                opacity: 1; 
+                box-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
+            }
+            50% { 
+                opacity: 0.8; 
+                box-shadow: 0 0 40px rgba(239, 68, 68, 0.5);
+            }
+        }
+        
+        .score {
+            font-size: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+            margin: 1rem 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 1rem 2rem;
+            border-radius: 16px;
+            display: inline-block;
+            border: 1px solid rgba(56, 189, 248, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 1.5rem;
+            margin: 1.5rem auto;
+            border-radius: 16px;
+            max-width: 700px;
+            font-size: 1rem;
+            font-weight: 500;
+            border: 1px solid rgba(56, 189, 248, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            line-height: 1.6;
+        }
+        
+        .game-over {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%);
+            backdrop-filter: blur(20px);
+            color: white;
+            padding: 2rem;
+            border-radius: 20px;
+            margin: 2rem auto;
+            max-width: 500px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            box-shadow: 0 25px 50px rgba(239, 68, 68, 0.2);
+        }
+        
+        .game-over h2 {
+            color: white;
+            margin-bottom: 1rem;
+        }
+        
+        .debug-panel {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            font-family: 'Inter', monospace;
+            position: sticky;
+            top: 2rem;
+            height: fit-content;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .debug-panel h3 {
+            color: #38BDF8;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .debug-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+            font-size: 0.9rem;
+        }
+        
+        .debug-item strong {
+            color: #94A3B8;
+        }
+        
+        .debug-item span {
+            color: #22C55E;
+            font-weight: 500;
+        }
+        
+        .debug-log {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+        
+        #liveTranscript {
+            color: #22C55E;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            min-height: 200px;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.3;
+            padding: 0.5rem 0;
+        }
+        
+        .transcript-interim {
+            color: #FCD34D;
+            font-style: italic;
+        }
+        
+        .transcript-final {
+            color: #22C55E;
+            font-weight: bold;
+        }
+        
+        .transcript-jump {
+            color: #EF4444;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .debug-meter {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+        
+        .meter-container {
+            position: relative;
+            width: 100%;
+            height: 30px;
+            background: linear-gradient(to right, 
+                #22C55E 0%, 
+                #FCD34D 60%, 
+                #EF4444 85%, 
+                #DC2626 100%);
+            border-radius: 15px;
+            margin: 0.5rem 0;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .meter-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 0%;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            transition: width 0.1s ease;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .meter-scale {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #94A3B8;
+            margin-top: 0.25rem;
+        }
+
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .game-layout {
+                flex-direction: column;
+            }
+            
+            .game-sidebar {
+                width: 100%;
+            }
+            
+            .debug-panel {
+                position: relative;
+                top: auto;
+                max-height: 400px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            #gameCanvas {
+                width: 100%;
+                max-width: 400px;
+                height: 200px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            button {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .debug-panel {
+                font-size: 0.8rem;
+                max-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Intro Screen -->
+    <div class="intro-screen" id="introScreen">
+        <div class="intro-content">
+            <div class="intro-title">🦕 Voice Dino Run</div>
+            <div class="intro-subtitle">⭐ Starring: Riyadh! ⭐</div>
+            <div class="intro-description">
+                Let's help Riyadh jump through these cacti and get the highest score!
+            </div>
+            <div class="intro-twist">
+                🎤 A little twist... make any loud sound to jump over the cacti!
+            </div>
+            <button class="start-button" onclick="startIntro()">🎮 Start Adventure</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>🦕 Voice-Controlled Dino Run</h1>
+        <h2>⭐ Starring: Riyadh! ⭐</h2>
+        
+        <div class="game-layout">
+            <div class="game-main">
+                <div class="score">
+                    Score: <span id="score">0</span> | Lives: <span id="lives">3</span>
+                </div>
+                
+                <canvas id="gameCanvas" width="800" height="400"></canvas>
+                
+                <div class="controls">
+                    <button onclick="startGame()" id="gameBtn">🎮 Start Game</button>
+                    <button onclick="toggleVoice()" id="voiceBtn">🎤 Enable Voice</button>
+                    <button onclick="manualJump()">🦘 Manual Jump</button>
+                </div>
+                
+                <div class="status" id="status">
+                    Click "Start Game" then "Enable Voice" to play with audio control!
+                </div>
+                
+                <div id="gameOverScreen" class="game-over" style="display: none;">
+                    <h2>Game Over!</h2>
+                    <p>Final Score: <span id="finalScore">0</span></p>
+                    <button onclick="restartGame()">🔄 Play Again</button>
+                </div>
+            </div>
+            
+            <div class="game-sidebar">
+                <div class="debug-panel" id="debugPanel" style="display: block;">
+                    <h3>🎤 Live Audio Debug</h3>
+                    <div class="debug-item">
+                        <strong>Status:</strong> <span id="voiceStatus">Inactive</span>
+                    </div>
+                    <div class="debug-item">
+                        <strong>Jump Commands:</strong> <span id="jumpCount">0</span>
+                    </div>
+                    <div class="debug-item">
+                        <strong>Audio Level:</strong> <span id="audioLevel">0 dB</span>
+                    </div>
+                    <div class="debug-item">
+                        <strong>Baseline:</strong> <span id="baseline">-50.0 dB</span>
+                    </div>
+                    <div class="debug-item">
+                        <strong>Peak Threshold:</strong> <span id="threshold">10 dB above baseline</span>
+                    </div>
+                    <div class="debug-meter">
+                        <strong>Live Audio Meter:</strong><br>
+                        <div class="meter-container">
+                            <div class="meter-bar" id="meterBar"></div>
+                            <div class="meter-scale">
+                                <span>-60</span><span>-40</span><span>-20</span><span>0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="debug-log" id="debugLog">
+                        <strong>Live Transcript:</strong><br>
+                        <div id="liveTranscript">Waiting for voice input...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        let canvas = document.getElementById('gameCanvas');
+        let ctx = canvas.getContext('2d');
+        let gameRunning = false;
+        let voiceEnabled = false;
+        let recognition = null;
+        let debugMode = true; // Start with debug enabled
+        let jumpCommandCount = 0;
+        let lastJumpTime = 0; // Track last jump time for cooldown
+        
+        // Audio analysis variables
+        let audioContext = null;
+        let analyser = null;
+        let microphone = null;
+        let dataArray = null;
+        let animationId = null;
+        
+        // Game state
+        let score = 0;
+        let lives = 9; // Increased from 3 to 9
+        let gameSpeed = 2; // Reduced from 3 to 2 (slower game)
+        let lastObstacleTime = 0;
+        let obstacles = [];
+        
+        // Audio peak detection variables (only mode now)
+        let baselineDecibel = -50; // Baseline noise level
+        let jumpThreshold = 10; // dB above baseline to trigger jump
+        let lastPeakJumpTime = 0;
+        
+        // Character (YOU!)
+        let dino = {
+            x: 100,
+            y: 300,
+            width: 50, // Made tiny bit smaller
+            height: 65, // Made tiny bit smaller
+            velocityY: 0,
+            onGround: true,
+            color: '#FF6B6B'
+        };
+        
+        // Physics
+        let groundY = 360;
+        let gravity = 0.25; // Even slower fall for longer air time (was 0.3)
+        let jumpPower = -12; // REDUCED jump height so he doesn't disappear off screen
+        
+        // Initialize audio analysis for decibel meter
+        async function initAudioAnalysis() {
+            try {
+                console.log('🎤 Requesting microphone access...');
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                        sampleRate: 44100
+                    }
+                });
+                
+                console.log('✅ Microphone access granted');
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Resume audio context if suspended
+                if (audioContext.state === 'suspended') {
+                    console.log('⚠️ Audio context suspended, resuming...');
+                    await audioContext.resume();
+                    console.log('✅ Audio context resumed');
+                }
+                
+                console.log(`Audio context state: ${audioContext.state}`);
+                console.log(`Sample rate: ${audioContext.sampleRate} Hz`);
+                
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+                
+                // More sensitive settings
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0.3;
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                
+                microphone.connect(analyser);
+                
+                console.log('🔊 Audio analysis initialized');
+                console.log(`FFT size: ${analyser.fftSize}`);
+                console.log(`Buffer length: ${bufferLength}`);
+                
+                // Verify audio stream is active
+                console.log(`Audio stream active: ${stream.active}`);
+                console.log(`Audio tracks: ${stream.getAudioTracks().length}`);
+                
+                // Start the audio level monitoring immediately
+                startAudioMonitoring();
+                
+                return true;
+            } catch (error) {
+                console.error('❌ Audio analysis error:', error);
+                if (error.name === 'NotAllowedError') {
+                    console.error('Microphone permission denied');
+                } else if (error.name === 'NotFoundError') {
+                    console.error('No microphone found');
+                } else {
+                    console.error('Unknown audio error:', error.name);
+                }
+                return false;
+            }
+        }
+        
+        // Separate audio monitoring function
+        function startAudioMonitoring() {
+            if (!analyser || !dataArray) {
+                console.error('❌ Audio monitoring failed - analyser not initialized');
+                return;
+            }
+            
+            console.log('🔊 Starting audio monitoring loop...');
+            
+            function audioLoop() {
+                if (!analyser || !dataArray) return;
+                
+                analyser.getByteTimeDomainData(dataArray);
+                
+                // Calculate peak amplitude (more responsive than RMS)
+                let peak = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    const amplitude = Math.abs(dataArray[i] - 128);
+                    if (amplitude > peak) {
+                        peak = amplitude;
+                    }
+                }
+                
+                // Convert to decibels (more sensitive calculation)
+                let decibels = 20 * Math.log10(peak / 128);
+                if (!isFinite(decibels) || peak === 0) decibels = -60; // Silence
+                
+                // Clamp to reasonable range
+                decibels = Math.max(-60, Math.min(0, decibels));
+                
+                // Update the display
+                document.getElementById('audioLevel').textContent = `${decibels.toFixed(1)} dB`;
+                
+                // Update the meter bar (0% = -60dB, 100% = 0dB)
+                const percentage = ((decibels + 60) / 60) * 100;
+                document.getElementById('meterBar').style.width = `${percentage}%`;
+                
+                // DECIBEL PEAK DETECTION - ONLY MODE (NO SPEECH API)
+                if (voiceEnabled) {
+                    // Auto-calibrate baseline (slowly adjust to ambient noise)
+                    if (decibels > -55) { // Only adjust if there's some audio
+                        baselineDecibel = baselineDecibel * 0.995 + decibels * 0.005; // Very slow adjustment
+                        document.getElementById('baseline').textContent = `${baselineDecibel.toFixed(1)} dB`;
+                    }
+                    
+                    // Lower threshold for better sensitivity
+                    const adjustedThreshold = 8; // Reduced from 10
+                    const peakAboveBaseline = decibels - baselineDecibel;
+                    
+                    console.log(`Audio: ${decibels.toFixed(1)}dB, Baseline: ${baselineDecibel.toFixed(1)}dB, Peak: ${peakAboveBaseline.toFixed(1)}dB`);
+                    
+                    // Only trigger jumps during gameplay
+                    if (gameRunning && peakAboveBaseline > adjustedThreshold) {
+                        const now = Date.now();
+                        if (now - lastPeakJumpTime > 150) { // Reduced cooldown
+                            // Calculate extended air time based on sustained decibel level
+                            const sustainedLevel = Math.max(0, Math.min(1, (peakAboveBaseline - adjustedThreshold) / 15)); // 0-1 scale
+                            jumpWithExtendedAirTime(sustainedLevel);
+                            jumpCommandCount++;
+                            lastPeakJumpTime = now;
+                            updateStatus(`🔊 AUDIO JUMP! ${decibels.toFixed(1)} dB (${(sustainedLevel * 100).toFixed(0)}% extended air time)`);
+                            
+                            console.log(`🦘 JUMP TRIGGERED! Peak: ${peakAboveBaseline.toFixed(1)}dB above baseline`);
+                            
+                            if (debugMode) {
+                                addToTranscript(`AUDIO: ${decibels.toFixed(1)}dB (+${peakAboveBaseline.toFixed(1)}) - ${(sustainedLevel * 100).toFixed(0)}% air time`, false, true);
+                                updateDebugStatus(
+                                    '⚡ AUDIO JUMP',
+                                    `${decibels.toFixed(1)} dB`,
+                                    `+${(sustainedLevel * 100).toFixed(0)}% air time`,
+                                    'AUDIO DETECT',
+                                    jumpCommandCount
+                                );
+                            }
+                        }
+                    }
+                }
+                
+                // Continue monitoring
+                animationId = requestAnimationFrame(audioLoop);
+            }
+            
+            // Start the monitoring loop
+            audioLoop();
+        }
+        
+        // Audio-only voice control (no speech recognition API)
+        async function enableVoice() {
+            if (voiceEnabled) return;
+            
+            updateStatus('🎤 Initializing audio control...');
+            
+            // Only use audio analysis - no speech recognition
+            const audioReady = await initAudioAnalysis();
+            if (!audioReady) {
+                updateStatus('❌ Microphone access denied - please allow microphone access and try again');
+                return;
+            }
+            
+            voiceEnabled = true;
+            document.getElementById('voiceBtn').textContent = '🔇 Disable Voice';
+            document.getElementById('voiceBtn').className = 'voice-listening';
+            updateStatus('🎤 Audio control enabled! Clap, shout, or make any loud sound to jump!');
+            
+            // Reset baseline
+            baselineDecibel = -50;
+            
+            if (debugMode) {
+                updateDebugStatus('🎤 AUDIO LISTENING', 'Monitoring audio levels...', '0%', 'Audio Only', jumpCommandCount);
+            }
+            
+            console.log('🎤 Audio control enabled - make some noise to test!');
+        }
+        
+        // No longer needed - audio monitoring is continuous
+        
+        function disableVoice() {
+            voiceEnabled = false;
+            
+            console.log('🔇 Disabling voice control...');
+            
+            // Stop audio monitoring
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+                console.log('✅ Audio monitoring stopped');
+            }
+            
+            // Clean up audio context
+            if (microphone) {
+                microphone.disconnect();
+                microphone = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+                console.log('✅ Audio context closed');
+            }
+            
+            // Reset variables
+            analyser = null;
+            dataArray = null;
+            
+            document.getElementById('voiceBtn').textContent = '🎤 Enable Voice';
+            document.getElementById('voiceBtn').className = '';
+            updateStatus('🔇 Audio control disabled');
+            
+            // Reset audio meter
+            document.getElementById('audioLevel').textContent = '0 dB';
+            document.getElementById('meterBar').style.width = '0%';
+            document.getElementById('baseline').textContent = '0 dB';
+            
+            if (debugMode) {
+                updateDebugStatus('🔇 INACTIVE', 'Audio control disabled', '0%', 'No', jumpCommandCount);
+            }
+        }
+        
+        function toggleVoice() {
+            if (voiceEnabled) {
+                disableVoice();
+            } else {
+                enableVoice();
+            }
+        }
+        
+        // Game logic
+        function startGame() {
+            if (gameRunning) {
+                stopGame();
+                return;
+            }
+            
+            // Reset game state
+            score = 0;
+            lives = 9; // NINE LIVES as requested!
+            obstacles = [];
+            dino.y = groundY - dino.height;
+            dino.velocityY = 0;
+            dino.onGround = true;
+            lastObstacleTime = Date.now();
+            
+            gameRunning = true;
+            document.getElementById('gameBtn').textContent = '⏸️ Stop Game';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            updateStatus('🎮 Game started! Jump over the cacti!');
+            
+            gameLoop();
+        }
+        
+        function stopGame() {
+            gameRunning = false;
+            document.getElementById('gameBtn').textContent = '🎮 Start Game';
+            updateStatus('Game stopped');
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw dynamic background
+            drawBackground();
+            
+            // Update physics
+            updateDino();
+            updateObstacles();
+            spawnObstacles();
+            checkCollisions();
+            
+            // Draw everything
+            drawGround();
+            drawDino();
+            drawObstacles();
+            
+            // Update score
+            score += 1;
+            updateDisplay();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function drawBackground() {
+            // Enhanced sky gradient
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, groundY);
+            skyGradient.addColorStop(0, '#87CEEB');
+            skyGradient.addColorStop(0.3, '#B0E0E6');
+            skyGradient.addColorStop(0.7, '#98FB98');
+            skyGradient.addColorStop(1, '#90EE90');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, groundY);
+            
+            // Sun
+            ctx.fillStyle = 'rgba(255, 223, 0, 0.8)';
+            ctx.beginPath();
+            ctx.arc(canvas.width - 100, 60, 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Sun rays
+            ctx.strokeStyle = 'rgba(255, 223, 0, 0.4)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 8; i++) {
+                const angle = (i * Math.PI * 2) / 8;
+                const x1 = (canvas.width - 100) + Math.cos(angle) * 35;
+                const y1 = 60 + Math.sin(angle) * 35;
+                const x2 = (canvas.width - 100) + Math.cos(angle) * 45;
+                const y2 = 60 + Math.sin(angle) * 45;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+            
+            // Volley plane with flag
+            const planeOffset = (Date.now() * 0.015) % (canvas.width + 200);
+            drawVolleyPlane(planeOffset - 100, 70);
+            
+            // Enhanced fluffy clouds
+            const cloudOffset1 = (Date.now() * 0.01) % (canvas.width + 150);
+            const cloudOffset2 = (Date.now() * 0.008) % (canvas.width + 180);
+            const cloudOffset3 = (Date.now() * 0.012) % (canvas.width + 120);
+            
+            drawFluffyCloud(cloudOffset1 - 100, 40, 1.0);
+            drawFluffyCloud(cloudOffset2 - 200, 90, 0.8);
+            drawFluffyCloud(cloudOffset3 - 350, 65, 1.2);
+            
+            // Distant layered mountains
+            ctx.fillStyle = 'rgba(139, 69, 19, 0.2)';
+            ctx.fillRect(0, groundY - 80, canvas.width, 80);
+            
+            // Mountain peaks
+            ctx.fillStyle = 'rgba(160, 82, 45, 0.3)';
+            for (let i = 0; i < canvas.width; i += 60) {
+                const height = Math.sin(i * 0.008) * 30 + 50;
+                ctx.fillRect(i, groundY - height, 60, height);
+            }
+            
+            // Closer mountain layer
+            ctx.fillStyle = 'rgba(139, 69, 19, 0.4)';
+            for (let i = 0; i < canvas.width; i += 80) {
+                const height = Math.sin(i * 0.012 + 1) * 25 + 35;
+                ctx.fillRect(i, groundY - height, 80, height);
+            }
+        }
+        
+        function drawVolleyPlane(x, y) {
+            const planeScale = 1.8; // Make plane much bigger
+            
+            // Private jet fuselage (sleek and modern)
+            ctx.fillStyle = '#F8FAFC'; // White/silver jet body
+            ctx.fillRect(x, y, 80 * planeScale, 15 * planeScale);
+            
+            // Jet nose (pointed private jet style)
+            ctx.fillStyle = '#E2E8F0';
+            ctx.fillRect(x + 80 * planeScale, y + 2 * planeScale, 18 * planeScale, 11 * planeScale);
+            // Nose tip
+            ctx.fillStyle = '#CBD5E1';
+            ctx.fillRect(x + 98 * planeScale, y + 5 * planeScale, 8 * planeScale, 5 * planeScale);
+            
+            // Private jet wings (swept back design)
+            ctx.fillStyle = '#E5E7EB';
+            // Main wing
+            ctx.fillRect(x + 25 * planeScale, y - 12 * planeScale, 35 * planeScale, 8 * planeScale);
+            // Wing tip
+            ctx.fillRect(x + 55 * planeScale, y - 10 * planeScale, 12 * planeScale, 4 * planeScale);
+            
+            // Tail wing
+            ctx.fillStyle = '#D1D5DB';
+            ctx.fillRect(x - 15 * planeScale, y + 2 * planeScale, 20 * planeScale, 12 * planeScale);
+            // Vertical stabilizer
+            ctx.fillRect(x - 10 * planeScale, y - 8 * planeScale, 8 * planeScale, 15 * planeScale);
+            
+            // Jet engines (private jet style)
+            ctx.fillStyle = '#94A3B8';
+            ctx.fillRect(x + 10 * planeScale, y + 15 * planeScale, 12 * planeScale, 8 * planeScale);
+            ctx.fillRect(x + 35 * planeScale, y + 15 * planeScale, 12 * planeScale, 8 * planeScale);
+            
+            // Cockpit windows
+            ctx.fillStyle = '#1E293B';
+            ctx.fillRect(x + 70 * planeScale, y + 3 * planeScale, 15 * planeScale, 6 * planeScale);
+            
+            // Passenger windows
+            ctx.fillStyle = '#334155';
+            for (let i = 0; i < 4; i++) {
+                ctx.fillRect(x + (20 + i * 12) * planeScale, y + 4 * planeScale, 8 * planeScale, 4 * planeScale);
+            }
+            
+            // Draw Max (blonde person) in the jet
+            drawMaxInJet(x + 35 * planeScale, y + 2 * planeScale, planeScale);
+            
+            // Beautiful Volley banner flag
+            const flagWidth = 35 * planeScale;
+            const flagHeight = 20 * planeScale;
+            const flagX = x - 45 * planeScale;
+            const flagY = y + 4 * planeScale;
+            
+            // Flag wave calculation for natural movement
+            const waveTime = Date.now() * 0.008;
+            const waveIntensity = 2 * planeScale;
+            
+            // Main flag background with gradient
+            const flagGradient = ctx.createLinearGradient(flagX, flagY, flagX + flagWidth, flagY);
+            flagGradient.addColorStop(0, '#2563EB');
+            flagGradient.addColorStop(0.5, '#3B82F6');
+            flagGradient.addColorStop(1, '#1D4ED8');
+            ctx.fillStyle = flagGradient;
+            
+            // Draw flag with natural wave effect
+            ctx.beginPath();
+            ctx.moveTo(flagX, flagY);
+            for (let i = 0; i <= flagWidth; i += 2) {
+                const waveY = flagY + Math.sin(waveTime + i * 0.1) * waveIntensity;
+                ctx.lineTo(flagX + i, waveY);
+            }
+            for (let i = flagWidth; i >= 0; i -= 2) {
+                const waveY = flagY + flagHeight + Math.sin(waveTime + i * 0.1) * waveIntensity;
+                ctx.lineTo(flagX + i, waveY);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Flag border for definition
+            ctx.strokeStyle = '#1E40AF';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // SHARP "VOLLEY" text
+            ctx.fillStyle = '#FFF';
+            ctx.font = `bold ${8 * planeScale}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.textAlign = 'center';
+            // Text shadow for sharpness
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+            ctx.shadowBlur = 1;
+            ctx.shadowOffsetX = 1;
+            ctx.shadowOffsetY = 1;
+            ctx.fillText('VOLLEY', flagX + flagWidth / 2, flagY + flagHeight / 2 + 3 * planeScale);
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            // Flag pole connection
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2 * planeScale;
+            ctx.beginPath();
+            ctx.moveTo(x - 10 * planeScale, y + 6 * planeScale);
+            ctx.lineTo(flagX, flagY + 2 * planeScale);
+            ctx.moveTo(x - 10 * planeScale, y + 18 * planeScale);
+            ctx.lineTo(flagX, flagY + flagHeight - 2 * planeScale);
+            ctx.stroke();
+            
+            // Subtle flag highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.fillRect(flagX + 2, flagY + 2, flagWidth - 4, 4);
+        }
+        
+        function drawMaxInJet(x, y, scale) {
+            // Max visible through window - BIGGER
+            const personScale = 1.0 * scale; // Increased from 0.6 to 1.0
+            
+            // Head (blonde hair)
+            ctx.fillStyle = '#FFDBAC'; // Skin tone
+            ctx.fillRect(x, y + 2 * personScale, 8 * personScale, 8 * personScale);
+            
+            // Blonde hair
+            ctx.fillStyle = '#FFD700'; // Golden blonde
+            ctx.fillRect(x - 1 * personScale, y, 10 * personScale, 4 * personScale);
+            // Hair texture
+            ctx.fillStyle = '#FFC107';
+            ctx.fillRect(x, y + 1 * personScale, 3 * personScale, 2 * personScale);
+            ctx.fillRect(x + 5 * personScale, y + 1 * personScale, 3 * personScale, 2 * personScale);
+            
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(x + 2 * personScale, y + 4 * personScale, 1 * personScale, 1 * personScale);
+            ctx.fillRect(x + 5 * personScale, y + 4 * personScale, 1 * personScale, 1 * personScale);
+            
+            // Smile
+            ctx.fillStyle = '#8B0000';
+            ctx.fillRect(x + 3 * personScale, y + 6 * personScale, 2 * personScale, 1 * personScale);
+            
+            // "MAX" T-shirt
+            ctx.fillStyle = '#DC2626'; // Red shirt
+            ctx.fillRect(x - 1 * personScale, y + 10 * personScale, 10 * personScale, 8 * personScale);
+            
+            // "MAX" text on shirt
+            ctx.fillStyle = '#FFF';
+            ctx.font = `bold ${3 * personScale}px Inter, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText('MAX', x + 4 * personScale, y + 15 * personScale);
+            
+            // Arms
+            ctx.fillStyle = '#FFDBAC';
+            ctx.fillRect(x - 2 * personScale, y + 12 * personScale, 2 * personScale, 4 * personScale);
+            ctx.fillRect(x + 8 * personScale, y + 12 * personScale, 2 * personScale, 4 * personScale);
+        }
+        
+        function drawFluffyCloud(x, y, size) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            
+            // Main cloud body with multiple circles for fluffy effect
+            const baseWidth = 60 * size;
+            const baseHeight = 25 * size;
+            
+            // Draw multiple overlapping circles for fluffy appearance
+            ctx.beginPath();
+            ctx.arc(x, y + baseHeight * 0.3, baseHeight * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(x + baseWidth * 0.3, y, baseHeight * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(x + baseWidth * 0.6, y + baseHeight * 0.2, baseHeight * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(x + baseWidth * 0.8, y + baseHeight * 0.4, baseHeight * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(x + baseWidth * 0.1, y + baseHeight * 0.6, baseHeight * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Cloud shadow for depth
+            ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
+            ctx.beginPath();
+            ctx.arc(x + 2, y + baseHeight * 0.8, baseWidth * 0.4, 0, Math.PI);
+            ctx.fill();
+        }
+        
+        function updateDino() {
+            // Apply gravity
+            if (!dino.onGround) {
+                dino.velocityY += gravity;
+            }
+            
+            // Update position
+            dino.y += dino.velocityY;
+            
+            // Ground collision
+            if (dino.y >= groundY - dino.height) {
+                dino.y = groundY - dino.height;
+                dino.velocityY = 0;
+                dino.onGround = true;
+            }
+        }
+        
+        function updateObstacles() {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].x -= gameSpeed;
+                
+                // Remove off-screen obstacles
+                if (obstacles[i].x + obstacles[i].width < 0) {
+                    obstacles.splice(i, 1);
+                    score += 20; // Bonus for passing obstacle
+                }
+            }
+        }
+        
+        function spawnObstacles() {
+            const currentTime = Date.now();
+            if (currentTime - lastObstacleTime > 2500) { // Every 2.5 seconds
+                obstacles.push({
+                    x: canvas.width,
+                    y: groundY - 50,
+                    width: 25,
+                    height: 50,
+                    type: 'cactus'
+                });
+                lastObstacleTime = currentTime;
+            }
+        }
+        
+        function checkCollisions() {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                
+                if (dino.x < obstacle.x + obstacle.width &&
+                    dino.x + dino.width > obstacle.x &&
+                    dino.y < obstacle.y + obstacle.height &&
+                    dino.y + dino.height > obstacle.y) {
+                    
+                    // Collision!
+                    lives--;
+                    obstacles.splice(i, 1); // Remove the obstacle
+                    
+                    // Flash dino red
+                    dino.color = '#FF0000';
+                    setTimeout(() => {
+                        dino.color = '#FF6B6B';
+                    }, 500);
+                    
+                    if (lives <= 0) {
+                        gameOver();
+                    }
+                    
+                    break;
+                }
+            }
+        }
+        
+        function jump() {
+            if (dino.onGround && gameRunning) {
+                dino.velocityY = jumpPower;
+                dino.onGround = false;
+                return true;
+            }
+            return false;
+        }
+        
+        function jumpWithExtendedAirTime(sustainedLevel) {
+            if (dino.onGround && gameRunning) {
+                // Base jump
+                dino.velocityY = jumpPower;
+                dino.onGround = false;
+                
+                // Apply extended air time by reducing gravity temporarily
+                const originalGravity = gravity;
+                const extendedGravity = gravity * (1 - sustainedLevel * 0.5); // Up to 50% gravity reduction
+                
+                // Override gravity for extended air time
+                let airTimeFrames = 0;
+                const maxAirFrames = Math.floor(60 * sustainedLevel); // Up to 1 second at 60fps
+                
+                const extendedJumpInterval = setInterval(() => {
+                    if (airTimeFrames < maxAirFrames && !dino.onGround) {
+                        // Temporarily reduce gravity for this frame
+                        const tempGravity = gravity;
+                        gravity = extendedGravity;
+                        airTimeFrames++;
+                    } else {
+                        // Restore original gravity
+                        gravity = originalGravity;
+                        clearInterval(extendedJumpInterval);
+                    }
+                }, 16); // ~60fps
+                
+                return true;
+            }
+            return false;
+        }
+        
+        function manualJump() {
+            if (jump()) {
+                updateStatus('🦘 Manual jump!');
+            }
+        }
+        
+        function drawGround() {
+            // Ground gradient
+            const groundGradient = ctx.createLinearGradient(0, groundY, 0, canvas.height);
+            groundGradient.addColorStop(0, '#8D6E63');
+            groundGradient.addColorStop(0.3, '#A1887F');
+            groundGradient.addColorStop(0.7, '#6D4C41');
+            groundGradient.addColorStop(1, '#5D4037');
+            ctx.fillStyle = groundGradient;
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+            
+            // Ground texture
+            ctx.fillStyle = '#7D5F52';
+            for (let i = 0; i < canvas.width; i += 20) {
+                ctx.fillRect(i, groundY + 10, 8, 2);
+                ctx.fillRect(i + 10, groundY + 15, 6, 2);
+            }
+            
+            // Ground line with shadow
+            ctx.strokeStyle = '#3E2723';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.stroke();
+            
+            // Ground highlight
+            ctx.strokeStyle = '#BCAAA4';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY - 1);
+            ctx.lineTo(canvas.width, groundY - 1);
+            ctx.stroke();
+        }
+        
+        function drawDino() {
+            const x = dino.x;
+            const y = dino.y;
+            const scale = 1.05; // Make character tiny bit smaller (was 1.1)
+            
+            // Body (Volley t-shirt)
+            ctx.fillStyle = '#2563EB'; // Blue Volley brand color
+            ctx.fillRect(x + 8 * scale, y + 28 * scale, 44 * scale, 42 * scale);
+            
+            // T-shirt "VOLLEY" text
+            ctx.fillStyle = '#FFF';
+            ctx.font = `bold ${8 * scale}px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText('VOLLEY', x + 30 * scale, y + 50 * scale);
+            
+            // Head (more realistic skin tone)
+            ctx.fillStyle = '#D2B48C'; // Warmer skin tone
+            ctx.fillRect(x + 5 * scale, y, 52 * scale, 39 * scale);
+            
+            // Hair (dark curly hair from photo)
+            ctx.fillStyle = '#2B1B0F';
+            // Main hair
+            ctx.fillRect(x + 3 * scale, y - 5 * scale, 57 * scale, 19 * scale);
+            // Hair texture/curls
+            ctx.fillStyle = '#3D2914';
+            ctx.fillRect(x + 5 * scale, y - 3 * scale, 8 * scale, 10 * scale);
+            ctx.fillRect(x + 15 * scale, y - 4 * scale, 10 * scale, 12 * scale);
+            ctx.fillRect(x + 28 * scale, y - 3 * scale, 9 * scale, 10 * scale);
+            ctx.fillStyle = '#2B1B0F';
+            ctx.fillRect(x + 38 * scale, y - 2 * scale, 8 * scale, 9 * scale);
+            
+            // Forehead shadow
+            ctx.fillStyle = '#C4A47C';
+            ctx.fillRect(x + 8 * scale, y + 8 * scale, 44 * scale, 4 * scale);
+            
+            // Eyebrows (prominent like in photo)
+            ctx.fillStyle = '#2B1B0F';
+            ctx.fillRect(x + 12 * scale, y + 9 * scale, 10 * scale, 3 * scale);
+            ctx.fillRect(x + 28 * scale, y + 9 * scale, 10 * scale, 3 * scale);
+            
+            // Eyes (more detailed)
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(x + 13 * scale, y + 12 * scale, 8 * scale, 5 * scale);
+            ctx.fillRect(x + 29 * scale, y + 12 * scale, 8 * scale, 5 * scale);
+            
+            // Pupils
+            ctx.fillStyle = '#4A4A4A';
+            ctx.fillRect(x + 15 * scale, y + 13 * scale, 3 * scale, 3 * scale);
+            ctx.fillRect(x + 31 * scale, y + 13 * scale, 3 * scale, 3 * scale);
+            
+            // Nose
+            ctx.fillStyle = '#C4A47C';
+            ctx.fillRect(x + 23 * scale, y + 17 * scale, 5 * scale, 4 * scale);
+            
+            // Beard (full beard like in photo)
+            ctx.fillStyle = '#2B1B0F';
+            // Main beard area
+            ctx.fillRect(x + 8 * scale, y + 20 * scale, 44 * scale, 19 * scale);
+            // Beard texture
+            ctx.fillStyle = '#3D2914';
+            ctx.fillRect(x + 10 * scale, y + 22 * scale, 5 * scale, 10 * scale);
+            ctx.fillStyle = '#2B1B0F';
+            ctx.fillRect(x + 18 * scale, y + 24 * scale, 8 * scale, 8 * scale);
+            ctx.fillStyle = '#3D2914';
+            ctx.fillRect(x + 28 * scale, y + 23 * scale, 7 * scale, 9 * scale);
+            ctx.fillStyle = '#2B1B0F';
+            ctx.fillRect(x + 36 * scale, y + 22 * scale, 5 * scale, 10 * scale);
+            
+            // Mouth (big smile like in photo)
+            ctx.fillStyle = '#8B0000';
+            ctx.fillRect(x + 20 * scale, y + 18 * scale, 13 * scale, 3 * scale);
+            // Teeth
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(x + 22 * scale, y + 17 * scale, 3 * scale, 3 * scale);
+            ctx.fillRect(x + 26 * scale, y + 17 * scale, 3 * scale, 3 * scale);
+            
+            // Neck
+            ctx.fillStyle = '#D2B48C';
+            ctx.fillRect(x + 20 * scale, y + 28 * scale, 13 * scale, 7 * scale);
+            
+            // Arms (more proportional)
+            ctx.fillStyle = '#D2B48C';
+            ctx.fillRect(x + 2 * scale, y + 32 * scale, 10 * scale, 26 * scale);
+            ctx.fillRect(x + 52 * scale, y + 32 * scale, 10 * scale, 26 * scale);
+            
+            // Hands
+            ctx.fillStyle = '#D2B48C';
+            ctx.fillRect(x + 1 * scale, y + 50 * scale, 13 * scale, 10 * scale);
+            ctx.fillRect(x + 51 * scale, y + 50 * scale, 13 * scale, 10 * scale);
+            
+            // Legs (running animation with jeans)
+            ctx.fillStyle = '#1E3A8A'; // Blue jeans
+            const legOffset = Math.sin(Date.now() * 0.02) * 4;
+            ctx.fillRect(x + 15 * scale, y + 68 * scale, 10 * scale, (15 + legOffset) * scale);
+            ctx.fillRect(x + 35 * scale, y + 68 * scale, 10 * scale, (15 - legOffset) * scale);
+            
+            // Shoes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(x + 13 * scale, y + (80 + legOffset) * scale, 15 * scale, 5 * scale);
+            ctx.fillRect(x + 33 * scale, y + (80 - legOffset) * scale, 15 * scale, 5 * scale);
+            
+            // Jump effect
+            if (dino.onGround === false) {
+                // Motion blur effect
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = '#2563EB';
+                ctx.fillRect(x + 8 * scale, y + 28 * scale + 3, 44 * scale, 42 * scale);
+                ctx.globalAlpha = 1;
+            }
+        }
+        
+        function drawObstacles() {
+            for (let obstacle of obstacles) {
+                // Shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.fillRect(obstacle.x + 2, obstacle.y + obstacle.height, obstacle.width + 4, 8);
+                
+                // Main cactus body (gradient effect)
+                const gradient = ctx.createLinearGradient(obstacle.x, obstacle.y, obstacle.x + obstacle.width, obstacle.y);
+                gradient.addColorStop(0, '#2E7D32');
+                gradient.addColorStop(0.5, '#4CAF50');
+                gradient.addColorStop(1, '#2E7D32');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // Cactus arms with gradients
+                ctx.fillStyle = '#4CAF50';
+                ctx.fillRect(obstacle.x - 5, obstacle.y + 15, 12, 6);
+                ctx.fillRect(obstacle.x + obstacle.width - 7, obstacle.y + 25, 12, 6);
+                
+                // Highlight on main body
+                ctx.fillStyle = '#66BB6A';
+                ctx.fillRect(obstacle.x + 2, obstacle.y + 2, 4, obstacle.height - 4);
+                
+                // Spikes (more detailed)
+                ctx.fillStyle = '#1B5E20';
+                for (let i = 0; i < 4; i++) {
+                    // Left spikes
+                    ctx.fillRect(obstacle.x + 3, obstacle.y + i * 12, 3, 5);
+                    ctx.fillRect(obstacle.x + 4, obstacle.y + i * 12 + 1, 1, 3);
+                    // Right spikes
+                    ctx.fillRect(obstacle.x + obstacle.width - 6, obstacle.y + i * 12, 3, 5);
+                    ctx.fillRect(obstacle.x + obstacle.width - 5, obstacle.y + i * 12 + 1, 1, 3);
+                }
+                
+                // Cactus flower (decorative)
+                if (Math.random() > 0.7) {
+                    ctx.fillStyle = '#E91E63';
+                    ctx.fillRect(obstacle.x + obstacle.width / 2 - 2, obstacle.y - 3, 4, 3);
+                    ctx.fillStyle = '#FFC107';
+                    ctx.fillRect(obstacle.x + obstacle.width / 2 - 1, obstacle.y - 2, 2, 1);
+                }
+            }
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            disableVoice();
+            
+            document.getElementById('gameBtn').textContent = '🎮 Start Game';
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOverScreen').style.display = 'block';
+            
+            updateStatus('💀 Game Over! Click Play Again to restart');
+        }
+        
+        function restartGame() {
+            document.getElementById('gameOverScreen').style.display = 'none';
+            startGame();
+        }
+        
+        function updateDisplay() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+        }
+        
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+        
+        // Keyboard controls (backup)
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                manualJump();
+            }
+        });
+        
+        // Debug functions
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const debugPanel = document.getElementById('debugPanel');
+            const debugBtn = document.getElementById('debugBtn');
+            
+            if (debugMode) {
+                debugPanel.style.display = 'block';
+                debugBtn.textContent = '🔧 Hide Debug';
+                updateDebugStatus('🔧 DEBUG MODE', 'Debug panel enabled', '0%', 'No', jumpCommandCount);
+            } else {
+                debugPanel.style.display = 'block'; // Keep visible but set debugMode false
+                debugBtn.textContent = '🔧 Show Debug';
+                updateDebugStatus('🔧 DEBUG OFF', 'Debug mode disabled', '0%', 'No', jumpCommandCount);
+            }
+        }
+        
+        function updateDebugStatus(status, lastHeard, confidence, isFinal, jumpCount) {
+            document.getElementById('voiceStatus').textContent = status;
+            document.getElementById('lastHeard').textContent = lastHeard || 'Nothing';
+            document.getElementById('confidence').textContent = confidence;
+            document.getElementById('isFinal').textContent = isFinal;
+            document.getElementById('jumpCount').textContent = jumpCount;
+        }
+        
+        function addToTranscript(text, isFinal, isJump) {
+            const transcript = document.getElementById('liveTranscript');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            let className = isFinal ? 'transcript-final' : 'transcript-interim';
+            if (isJump) className = 'transcript-jump';
+            
+            const entry = `<div class="${className}">[${timestamp}] ${text} ${isFinal ? '(FINAL)' : '(interim)'} ${isJump ? '→ JUMP!' : ''}</div>`;
+            
+            transcript.innerHTML += entry;
+            transcript.scrollTop = transcript.scrollHeight;
+            
+            // Keep only last 20 entries
+            const entries = transcript.querySelectorAll('div');
+            if (entries.length > 20) {
+                entries[0].remove();
+            }
+        }
+        
+        function clearTranscript() {
+            document.getElementById('liveTranscript').innerHTML = 'Waiting for voice input...';
+        }
+        
+        // Mode toggle function removed - audio-only mode now
+
+        // Intro screen functionality
+        function startIntro() {
+            document.getElementById('introScreen').style.display = 'none';
+        }
+
+        // Initialize
+        updateDisplay();
+        updateStatus('🎮 Click "Start Game" then "Enable Voice" to play with audio control!');
+        
+        console.log('Audio-controlled Dino Run ready!');
+        console.log('Features your custom character with beard and smile!');
+    </script>
+</body>
+</html>

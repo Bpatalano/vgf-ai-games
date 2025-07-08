@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Voice Recognition Debug</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #333;
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 15px;
+        }
+        
+        .log {
+            background: #111;
+            color: #0f0;
+            padding: 20px;
+            margin: 20px auto;
+            border-radius: 10px;
+            max-width: 800px;
+            font-family: monospace;
+            text-align: left;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .error {
+            color: #f44;
+        }
+        
+        .success {
+            color: #4f4;
+        }
+        
+        .warning {
+            color: #fa4;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Voice Recognition Debug Tool</h1>
+    
+    <div>
+        <button onclick="testSupport()">1. Test Browser Support</button>
+        <button onclick="testPermission()">2. Test Microphone Permission</button>
+        <button onclick="testBasicVoice()">3. Test Basic Voice Recognition</button>
+    </div>
+    
+    <div class="log" id="log">
+        Click the buttons above to test each step...<br>
+        Make sure to allow microphone permission when prompted!<br><br>
+    </div>
+
+    <script>
+        function log(message, type = 'normal') {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            
+            logEl.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span><br>`;
+            logEl.scrollTop = logEl.scrollHeight;
+            
+            console.log(`[${type}] ${message}`);
+        }
+        
+        function testSupport() {
+            log('=== TESTING BROWSER SUPPORT ===');
+            
+            // Check for Speech Recognition
+            if (window.SpeechRecognition) {
+                log('✅ SpeechRecognition API found (standard)', 'success');
+            } else if (window.webkitSpeechRecognition) {
+                log('✅ webkitSpeechRecognition API found (webkit)', 'success');
+            } else {
+                log('❌ No Speech Recognition API found', 'error');
+                log('This browser does not support voice recognition.', 'error');
+                return;
+            }
+            
+            // Check for getUserMedia
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                log('✅ getUserMedia API found', 'success');
+            } else {
+                log('❌ getUserMedia API not found', 'error');
+            }
+            
+            // Check if we're on HTTPS (required for voice)
+            if (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                log('✅ Secure context (HTTPS or localhost)', 'success');
+            } else {
+                log('⚠️ Warning: Not HTTPS - voice may not work', 'warning');
+            }
+            
+            log('Browser support test complete.\n', 'success');
+        }
+        
+        async function testPermission() {
+            log('=== TESTING MICROPHONE PERMISSION ===');
+            
+            try {
+                log('Requesting microphone permission...');
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                log('✅ Microphone permission granted!', 'success');
+                
+                // Stop the stream
+                stream.getTracks().forEach(track => track.stop());
+                log('Microphone stream stopped.');
+                log('Permission test complete.\n', 'success');
+                
+            } catch (error) {
+                log(`❌ Microphone permission error: ${error.name}`, 'error');
+                log(`Error message: ${error.message}`, 'error');
+                
+                if (error.name === 'NotAllowedError') {
+                    log('You denied microphone permission. Please refresh and allow it.', 'error');
+                } else if (error.name === 'NotFoundError') {
+                    log('No microphone found on your device.', 'error');
+                } else {
+                    log('Unknown microphone error.', 'error');
+                }
+                
+                log('Permission test failed.\n', 'error');
+            }
+        }
+        
+        function testBasicVoice() {
+            log('=== TESTING BASIC VOICE RECOGNITION ===');
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                log('❌ Speech Recognition not available', 'error');
+                return;
+            }
+            
+            const recognition = new SpeechRecognition();
+            
+            // Basic settings
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = function() {
+                log('🎤 Voice recognition started - SAY ANYTHING NOW!', 'success');
+                log('Try saying: "hello", "test", "jump", or any word...', 'warning');
+            };
+            
+            recognition.onresult = function(event) {
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    const transcript = result[0].transcript;
+                    const confidence = result[0].confidence;
+                    const isFinal = result.isFinal;
+                    
+                    log(`${isFinal ? '🔸 FINAL' : '🔹 interim'}: "${transcript}" (confidence: ${confidence ? (confidence * 100).toFixed(0) + '%' : 'unknown'})`, 'success');
+                    
+                    if (isFinal) {
+                        log('Voice recognition test successful! ✅', 'success');
+                        log('Basic voice test complete.\n', 'success');
+                    }
+                }
+            };
+            
+            recognition.onerror = function(event) {
+                log(`❌ Voice recognition error: ${event.error}`, 'error');
+                
+                if (event.error === 'not-allowed') {
+                    log('Microphone permission was denied. Please refresh and allow it.', 'error');
+                } else if (event.error === 'no-speech') {
+                    log('No speech was detected. Try speaking louder.', 'warning');
+                } else if (event.error === 'audio-capture') {
+                    log('No microphone was found or it is being used by another app.', 'error');
+                } else if (event.error === 'network') {
+                    log('Network error occurred during recognition.', 'error');
+                } else {
+                    log(`Unknown error: ${event.error}`, 'error');
+                }
+                
+                log('Basic voice test failed.\n', 'error');
+            };
+            
+            recognition.onend = function() {
+                log('Voice recognition ended.', 'warning');
+            };
+            
+            try {
+                recognition.start();
+                log('Starting voice recognition... (will timeout in 5 seconds)');
+                
+                // Auto-stop after 5 seconds
+                setTimeout(() => {
+                    try {
+                        recognition.stop();
+                        log('Voice recognition stopped (timeout).', 'warning');
+                    } catch (e) {
+                        // Already stopped
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                log(`❌ Failed to start voice recognition: ${error.message}`, 'error');
+            }
+        }
+        
+        // Auto-run support test
+        window.onload = function() {
+            log('Voice Recognition Debug Tool loaded');
+            log('Run each test in order: 1 → 2 → 3\n');
+        };
+    </script>
+</body>
+</html>

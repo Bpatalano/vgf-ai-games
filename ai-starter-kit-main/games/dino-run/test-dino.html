@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦕 Dino Run Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #fff;
+            border-radius: 12px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        .info {
+            text-align: center;
+            margin: 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">🦕 Dino Run - Starring YOU!</h1>
+    
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div class="controls">
+        <button onclick="startGame()">🎮 Start Dino Run</button>
+        <button onclick="testEngine()">🔧 Test Engine</button>
+        <button onclick="enableVoice()">🎤 Enable Voice</button>
+    </div>
+    
+    <div class="info">
+        <p><strong>Controls:</strong> SPACE or CLICK to jump over obstacles</p>
+        <p><strong>Goal:</strong> Survive as long as possible with your custom character!</p>
+        <div id="gameInfo"></div>
+    </div>
+
+    <!-- Load scripts in order -->
+    <script src="engine/Physics.js"></script>
+    <script src="engine/Entity.js"></script>
+    <script src="engine/GameEngine.js"></script>
+    <script src="entities/Dino.js"></script>
+    <script src="entities/Obstacle.js"></script>
+    <script src="entities/Ground.js"></script>
+    <script src="audio/SpeechRecognizer.js"></script>
+    <script src="audio/VoiceController.js"></script>
+    <script src="games/DinoRun.js"></script>
+
+    <script>
+        let game = null;
+        const canvas = document.getElementById('gameCanvas');
+        const info = document.getElementById('gameInfo');
+        
+        function log(message) {
+            console.log(message);
+            info.innerHTML += `<p>${message}</p>`;
+        }
+        
+        function testEngine() {
+            log('🔧 Testing game engine...');
+            
+            try {
+                // Test if classes are loaded
+                if (typeof GameEngine === 'undefined') {
+                    log('❌ GameEngine not loaded');
+                    return;
+                }
+                if (typeof Physics === 'undefined') {
+                    log('❌ Physics not loaded');
+                    return;
+                }
+                if (typeof Entity === 'undefined') {
+                    log('❌ Entity not loaded');
+                    return;
+                }
+                if (typeof Dino === 'undefined') {
+                    log('❌ Dino not loaded');
+                    return;
+                }
+                if (typeof DinoRun === 'undefined') {
+                    log('❌ DinoRun not loaded');
+                    return;
+                }
+                
+                log('✅ All classes loaded successfully!');
+                
+                // Test basic engine
+                const engine = new GameEngine(canvas);
+                log('✅ GameEngine created');
+                
+                // Test entity creation
+                const testDino = new Dino();
+                log('✅ Dino character created');
+                
+                log('🎮 Engine test complete - ready for game!');
+                
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`);
+                console.error('Full error:', error);
+            }
+        }
+        
+        function startGame() {
+            log('🦕 Starting Dino Run...');
+            
+            try {
+                if (game) {
+                    game.stop();
+                }
+                
+                game = new DinoRun(canvas);
+                log('✅ Dino Run created successfully!');
+                log('🎮 Click on the game area or press SPACE to start playing!');
+                log('🎤 Press V in game to enable voice control');
+                
+            } catch (error) {
+                log(`❌ Failed to start game: ${error.message}`);
+                console.error('Full error:', error);
+            }
+        }
+        
+        function enableVoice() {
+            log('🎤 Testing voice control...');
+            
+            try {
+                if (game && game.toggleVoiceControl) {
+                    const enabled = game.toggleVoiceControl();
+                    if (enabled) {
+                        log('✅ Voice control enabled! Say "JUMP" to test');
+                    } else {
+                        log('🔇 Voice control disabled');
+                    }
+                } else {
+                    log('⚠️ Start the game first to enable voice control');
+                }
+            } catch (error) {
+                log(`❌ Voice control error: ${error.message}`);
+                console.error('Full error:', error);
+            }
+        }
+        
+        // Auto-test when page loads
+        window.addEventListener('load', () => {
+            log('🌟 Welcome to Dino Run!');
+            setTimeout(testEngine, 500);
+        });
+        
+        // Global error handler
+        window.addEventListener('error', (e) => {
+            log(`💥 JavaScript Error: ${e.message}`);
+            console.error('Error details:', e);
+        });
+    </script>
+</body>
+</html>

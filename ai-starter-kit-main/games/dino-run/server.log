@@ -1,0 +1,34 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/shriya/miniconda3/lib/python3.13/http/server.py", line 1323, in <module>
+    test(
+    ~~~~^
+        HandlerClass=handler_class,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        protocol=args.protocol,
+        ^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shriya/miniconda3/lib/python3.13/http/server.py", line 1270, in test
+    with ServerClass(addr, HandlerClass) as httpd:
+         ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shriya/miniconda3/lib/py::ffff:127.0.0.1 - - [07/Jul/2025 16:15:52] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:18:12] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:23:05] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:25:15] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:27:49] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:29:54] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:37:54] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:42:16] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:44:00] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:45:51] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:49:55] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:52:04] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:53:55] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 16:58:27] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 17:01:42] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [07/Jul/2025 17:08:01] "GET /dino-voice-working.html HTTP/1.1" 200 -
+::ffff:127.0.0.1 - - [08/Jul/2025 10:04:36] code 404, message File not found
+::ffff:127.0.0.1 - - [08/Jul/2025 10:04:36] "GET /dino-voice-working.html HTTP/1.1" 404 -

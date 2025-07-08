@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 Audio Detection Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            font-family: 'Inter', sans-serif;
+            color: white;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+        
+        .active {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+        
+        .meter {
+            width: 100%;
+            height: 40px;
+            background: #333;
+            border-radius: 20px;
+            overflow: hidden;
+            margin: 16px 0;
+            position: relative;
+        }
+        
+        .meter-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50 0%, #FFC107 50%, #FF5722 100%);
+            border-radius: 20px;
+            transition: width 0.1s ease;
+        }
+        
+        .meter-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        
+        .log {
+            background: #111;
+            color: #0f0;
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 8px;
+            font-family: monospace;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+        
+        .stat-box {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Audio Detection Test</h1>
+        
+        <div class="test-section">
+            <h2>Microphone Test</h2>
+            <button onclick="testMicrophone()" id="micBtn">Test Microphone</button>
+            <button onclick="startRealTimeAudio()" id="audioBtn">Start Real-Time Audio</button>
+            <button onclick="stopAudio()" id="stopBtn">Stop Audio</button>
+            
+            <div class="meter">
+                <div class="meter-bar" id="audioMeter"></div>
+                <div class="meter-text" id="audioText">0 dB</div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="currentLevel">0</div>
+                    <div class="stat-label">Current Level</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="peakLevel">0</div>
+                    <div class="stat-label">Peak Level</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="avgLevel">0</div>
+                    <div class="stat-label">Average Level</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="jumpCount">0</div>
+                    <div class="stat-label">Jump Triggers</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Jump Detection Test</h2>
+            <p>Current threshold: <span id="threshold">8 dB</span></p>
+            <button onclick="adjustThreshold(-1)">Lower Threshold</button>
+            <button onclick="adjustThreshold(1)">Raise Threshold</button>
+            <button onclick="testJump()">Test Jump</button>
+            
+            <div id="jumpStatus" style="margin: 16px 0; font-size: 18px; font-weight: bold;">
+                Make noise to test jump detection
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Debug Log</h2>
+            <div class="log" id="log">
+                Audio test ready. Click "Test Microphone" to start.<br>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let audioContext = null;
+        let analyser = null;
+        let microphone = null;
+        let dataArray = null;
+        let isMonitoring = false;
+        let monitoringInterval = null;
+        
+        let currentLevel = 0;
+        let peakLevel = 0;
+        let avgLevel = 0;
+        let jumpCount = 0;
+        let jumpThreshold = 8;
+        
+        let levels = [];
+        let lastJumpTime = 0;
+        
+        function log(message) {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logEl.innerHTML += `[${timestamp}] ${message}<br>`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(message);
+        }
+        
+        async function testMicrophone() {
+            log('🎤 Testing microphone access...');
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                        sampleRate: 44100
+                    }
+                });
+                
+                log('✅ Microphone access granted');
+                
+                // Test basic audio context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                if (audioContext.state === 'suspended') {
+                    log('⚠️ Audio context suspended, attempting to resume...');
+                    await audioContext.resume();
+                    log('✅ Audio context resumed');
+                }
+                
+                log(`Audio context state: ${audioContext.state}`);
+                log(`Sample rate: ${audioContext.sampleRate} Hz`);
+                
+                // Create analyser
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0.3;
+                
+                // Connect microphone
+                microphone = audioContext.createMediaStreamSource(stream);
+                microphone.connect(analyser);
+                
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                
+                log(`✅ Audio analysis setup complete`);
+                log(`FFT size: ${analyser.fftSize}`);
+                log(`Buffer length: ${bufferLength}`);
+                
+                document.getElementById('micBtn').textContent = '✅ Microphone Ready';
+                
+            } catch (error) {
+                log(`❌ Microphone test failed: ${error.message}`);
+                
+                if (error.name === 'NotAllowedError') {
+                    log('Permission denied. Please refresh and allow microphone access.');
+                } else if (error.name === 'NotFoundError') {
+                    log('No microphone found on device.');
+                } else {
+                    log(`Unknown error: ${error.name}`);
+                }
+            }
+        }
+        
+        function startRealTimeAudio() {
+            if (!analyser) {
+                log('❌ Please test microphone first');
+                return;
+            }
+            
+            if (isMonitoring) {
+                log('⚠️ Already monitoring');
+                return;
+            }
+            
+            log('🎵 Starting real-time audio monitoring...');
+            isMonitoring = true;
+            
+            document.getElementById('audioBtn').textContent = '🎵 Monitoring Audio';
+            document.getElementById('audioBtn').classList.add('active');
+            
+            // Reset stats
+            peakLevel = 0;
+            levels = [];
+            jumpCount = 0;
+            
+            updateStats();
+            
+            monitoringInterval = setInterval(() => {
+                if (!isMonitoring) return;
+                
+                // Get audio data
+                analyser.getByteTimeDomainData(dataArray);
+                
+                // Calculate peak amplitude
+                let peak = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    const amplitude = Math.abs(dataArray[i] - 128);
+                    if (amplitude > peak) peak = amplitude;
+                }
+                
+                // Convert to decibels
+                const decibels = peak > 0 ? 20 * Math.log10(peak / 128) : -100;
+                
+                currentLevel = Math.max(decibels, -60); // Clamp to -60dB minimum
+                levels.push(currentLevel);
+                
+                // Keep only last 50 samples for average
+                if (levels.length > 50) {
+                    levels.shift();
+                }
+                
+                // Update peak
+                if (currentLevel > peakLevel) {
+                    peakLevel = currentLevel;
+                }
+                
+                // Calculate average
+                avgLevel = levels.reduce((a, b) => a + b, 0) / levels.length;
+                
+                // Test jump detection
+                const now = Date.now();
+                if (currentLevel > jumpThreshold && now - lastJumpTime > 500) {
+                    jumpCount++;
+                    lastJumpTime = now;
+                    log(`🦘 JUMP DETECTED! Level: ${currentLevel.toFixed(1)} dB`);
+                    
+                    document.getElementById('jumpStatus').textContent = `🦘 JUMP! ${currentLevel.toFixed(1)} dB`;
+                    document.getElementById('jumpStatus').style.color = '#4CAF50';
+                    
+                    setTimeout(() => {
+                        document.getElementById('jumpStatus').textContent = 'Make noise to test jump detection';
+                        document.getElementById('jumpStatus').style.color = 'white';
+                    }, 1000);
+                }
+                
+                updateStats();
+                updateMeter();
+                
+            }, 20); // 50fps
+        }
+        
+        function stopAudio() {
+            if (!isMonitoring) return;
+            
+            log('🛑 Stopping audio monitoring');
+            isMonitoring = false;
+            
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+            }
+            
+            document.getElementById('audioBtn').textContent = 'Start Real-Time Audio';
+            document.getElementById('audioBtn').classList.remove('active');
+            
+            // Reset meter
+            document.getElementById('audioMeter').style.width = '0%';
+            document.getElementById('audioText').textContent = '0 dB';
+        }
+        
+        function updateStats() {
+            document.getElementById('currentLevel').textContent = currentLevel.toFixed(1) + ' dB';
+            document.getElementById('peakLevel').textContent = peakLevel.toFixed(1) + ' dB';
+            document.getElementById('avgLevel').textContent = avgLevel.toFixed(1) + ' dB';
+            document.getElementById('jumpCount').textContent = jumpCount;
+        }
+        
+        function updateMeter() {
+            const normalized = Math.max(0, Math.min(100, (currentLevel + 60) / 60 * 100));
+            document.getElementById('audioMeter').style.width = normalized + '%';
+            document.getElementById('audioText').textContent = currentLevel.toFixed(1) + ' dB';
+        }
+        
+        function adjustThreshold(delta) {
+            jumpThreshold += delta;
+            jumpThreshold = Math.max(-20, Math.min(20, jumpThreshold));
+            document.getElementById('threshold').textContent = jumpThreshold + ' dB';
+            log(`Threshold adjusted to ${jumpThreshold} dB`);
+        }
+        
+        function testJump() {
+            log('🦘 Manual jump test');
+            jumpCount++;
+            updateStats();
+            
+            document.getElementById('jumpStatus').textContent = '🦘 Manual Jump!';
+            document.getElementById('jumpStatus').style.color = '#4CAF50';
+            
+            setTimeout(() => {
+                document.getElementById('jumpStatus').textContent = 'Make noise to test jump detection';
+                document.getElementById('jumpStatus').style.color = 'white';
+            }, 1000);
+        }
+        
+        // Initialize
+        log('Audio detection test loaded');
+        log('1. Click "Test Microphone" to get audio access');
+        log('2. Click "Start Real-Time Audio" to begin monitoring');
+        log('3. Make noise to test jump detection');
+    </script>
+</body>
+</html>

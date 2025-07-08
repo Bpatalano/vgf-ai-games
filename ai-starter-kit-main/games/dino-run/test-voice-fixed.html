@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 FIXED Voice Control Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #fff;
+            border-radius: 12px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .controls {
+            margin: 20px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        .voice-status {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            margin: 20px auto;
+            border-radius: 10px;
+            max-width: 600px;
+        }
+        
+        .listening {
+            background: rgba(76, 175, 80, 0.8) !important;
+            animation: pulse 1s infinite;
+        }
+        
+        .detected {
+            background: rgba(255, 193, 7, 0.8) !important;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .debug {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            margin: 10px auto;
+            border-radius: 5px;
+            max-width: 600px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎤 FIXED Voice Control - Dino Run</h1>
+    
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    
+    <div class="controls">
+        <button onclick="startGame()">🎮 Start Game</button>
+        <button onclick="toggleVoice()" id="voiceBtn">🎤 Enable Voice</button>
+        <button onclick="testVoice()">🔧 Test Voice</button>
+    </div>
+    
+    <div class="voice-status" id="voiceStatus">
+        Voice: OFF - Click "Enable Voice" to start
+    </div>
+    
+    <div class="debug" id="debug">
+        Ready to test voice controls...
+    </div>
+
+    <script>
+        // Game variables
+        let canvas = document.getElementById('gameCanvas');
+        let ctx = canvas.getContext('2d');
+        let gameRunning = false;
+        
+        // Enhanced voice recognition
+        let recognition = null;
+        let voiceEnabled = false;
+        let isListening = false;
+        let lastCommandTime = 0;
+        let commandCooldown = 150; // Reduced cooldown for faster response
+        
+        // Voice settings optimized for gaming
+        let voiceSettings = {
+            continuous: true,
+            interimResults: true,
+            lang: 'en-US',
+            maxAlternatives: 1
+        };
+        
+        // Game state
+        let score = 0;
+        let lives = 3;
+        let dino = {
+            x: 100,
+            y: 300,
+            width: 40,
+            height: 50,
+            velocityY: 0,
+            onGround: true,
+            color: '#FF6B6B'
+        };
+        
+        let obstacles = [];
+        let groundY = 350;
+        let gameSpeed = 3;
+        let lastObstacleTime = 0;
+        let gravity = 0.8;
+        let jumpPower = -16;
+        
+        function startVoiceRecognition() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                updateVoiceStatus('❌ Voice recognition not supported', 'error');
+                return false;
+            }
+            
+            try {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                // Optimized settings for gaming
+                recognition.continuous = voiceSettings.continuous;
+                recognition.interimResults = voiceSettings.interimResults;
+                recognition.lang = voiceSettings.lang;
+                recognition.maxAlternatives = voiceSettings.maxAlternatives;
+                
+                // Event handlers
+                recognition.onstart = function() {
+                    isListening = true;
+                    updateVoiceStatus('🎤 LISTENING - Say "JUMP" clearly!', 'listening');
+                    debugLog('Voice recognition started');
+                };
+                
+                recognition.onresult = function(event) {
+                    handleVoiceResult(event);
+                };
+                
+                recognition.onerror = function(event) {
+                    debugLog(`Voice error: ${event.error}`);
+                    
+                    if (event.error === 'no-speech') {
+                        debugLog('No speech detected - try speaking louder');
+                    } else if (event.error === 'not-allowed') {
+                        updateVoiceStatus('❌ Microphone permission denied', 'error');
+                        return;
+                    } else if (event.error === 'network') {
+                        debugLog('Network error - retrying...');
+                    }
+                };
+                
+                recognition.onend = function() {
+                    isListening = false;
+                    debugLog('Recognition ended');
+                    
+                    // Auto-restart if voice is still enabled
+                    if (voiceEnabled) {
+                        setTimeout(() => {
+                            if (voiceEnabled) {
+                                try {
+                                    recognition.start();
+                                } catch (e) {
+                                    debugLog('Failed to restart recognition: ' + e.message);
+                                }
+                            }
+                        }, 100);
+                    } else {
+                        updateVoiceStatus('🔇 Voice: OFF', 'off');
+                    }
+                };
+                
+                recognition.start();
+                voiceEnabled = true;
+                return true;
+                
+            } catch (error) {
+                debugLog('Failed to start voice recognition: ' + error.message);
+                updateVoiceStatus('❌ Voice recognition failed', 'error');
+                return false;
+            }
+        }
+        
+        function handleVoiceResult(event) {
+            const currentTime = Date.now();
+            
+            // Process both interim and final results for faster response
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const result = event.results[i];
+                const transcript = result[0].transcript.toLowerCase().trim();
+                const confidence = result[0].confidence;
+                const isFinal = result.isFinal;
+                
+                debugLog(`${isFinal ? 'FINAL' : 'interim'}: "${transcript}" (conf: ${confidence?.toFixed(2) || 'unknown'})`);
+                
+                // Check for jump commands with multiple variations
+                if (isJumpCommand(transcript)) {
+                    // Check cooldown
+                    if (currentTime - lastCommandTime < commandCooldown) {
+                        debugLog('Command ignored - too soon after last');
+                        continue;
+                    }
+                    
+                    // Execute jump
+                    const success = executeJump();
+                    lastCommandTime = currentTime;
+                    
+                    updateVoiceStatus(`🦘 JUMP DETECTED! "${transcript}"`, 'detected');
+                    debugLog(`Jump executed: ${success ? 'SUCCESS' : 'FAILED'}`);
+                    
+                    // Reset status after short delay
+                    setTimeout(() => {
+                        if (voiceEnabled) {
+                            updateVoiceStatus('🎤 LISTENING - Say "JUMP" clearly!', 'listening');
+                        }
+                    }, 1000);
+                    
+                    break; // Only process first valid command
+                }
+            }
+        }
+        
+        function isJumpCommand(transcript) {
+            // Comprehensive list of jump command variations
+            const jumpWords = [
+                'jump', 'jumped', 'jumping',
+                'hop', 'hopped', 'hopping', 
+                'up', 'go up', 'move up',
+                'leap', 'leaped', 'leaping',
+                'bounce', 'spring',
+                // Common misheard variations
+                'jup', 'jmp', 'dump', 'bump',
+                'hope', 'hoop', 'help', // Sometimes "hop" sounds like these
+                'cup', 'up up', 'yup',   // Sometimes "up" sounds like these
+                'job', 'chop', 'top'     // More misheard variations
+            ];
+            
+            // Check if transcript contains any jump word
+            return jumpWords.some(word => {
+                // Exact match or word boundary match
+                return transcript === word || 
+                       transcript.includes(word) ||
+                       new RegExp(`\\b${word}\\b`).test(transcript);
+            });
+        }
+        
+        function executeJump() {
+            if (dino.onGround) {
+                dino.velocityY = jumpPower;
+                dino.onGround = false;
+                return true;
+            }
+            return false;
+        }
+        
+        function stopVoiceRecognition() {
+            voiceEnabled = false;
+            isListening = false;
+            
+            if (recognition) {
+                try {
+                    recognition.stop();
+                } catch (e) {
+                    debugLog('Error stopping recognition: ' + e.message);
+                }
+            }
+            
+            updateVoiceStatus('🔇 Voice: OFF', 'off');
+            debugLog('Voice recognition stopped');
+        }
+        
+        function toggleVoice() {
+            if (voiceEnabled) {
+                stopVoiceRecognition();
+                document.getElementById('voiceBtn').textContent = '🎤 Enable Voice';
+            } else {
+                const success = startVoiceRecognition();
+                if (success) {
+                    document.getElementById('voiceBtn').textContent = '🔇 Disable Voice';
+                }
+            }
+        }
+        
+        function testVoice() {
+            if (!voiceEnabled) {
+                debugLog('Enable voice first to test');
+                return;
+            }
+            
+            debugLog('=== VOICE TEST MODE ===');
+            debugLog('Say "JUMP" now and watch for detection...');
+            updateVoiceStatus('🧪 TEST MODE - Say "JUMP" now!', 'listening');
+            
+            // Reset after 5 seconds
+            setTimeout(() => {
+                if (voiceEnabled) {
+                    updateVoiceStatus('🎤 LISTENING - Say "JUMP" clearly!', 'listening');
+                }
+                debugLog('=== TEST MODE ENDED ===');
+            }, 5000);
+        }
+        
+        function updateVoiceStatus(message, type) {
+            const statusEl = document.getElementById('voiceStatus');
+            statusEl.textContent = message;
+            statusEl.className = `voice-status ${type}`;
+        }
+        
+        function debugLog(message) {
+            const debugEl = document.getElementById('debug');
+            const timestamp = new Date().toLocaleTimeString();
+            debugEl.innerHTML = `[${timestamp}] ${message}<br>` + debugEl.innerHTML;
+            
+            // Keep only last 20 entries
+            const lines = debugEl.innerHTML.split('<br>');
+            if (lines.length > 20) {
+                debugEl.innerHTML = lines.slice(0, 20).join('<br>');
+            }
+            
+            console.log(`[VOICE] ${message}`);
+        }
+        
+        // Game logic (simplified)
+        function updateGame() {
+            if (!gameRunning) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Update dino
+            if (!dino.onGround) {
+                dino.velocityY += gravity;
+            }
+            dino.y += dino.velocityY;
+            
+            if (dino.y >= groundY - dino.height) {
+                dino.y = groundY - dino.height;
+                dino.velocityY = 0;
+                dino.onGround = true;
+            }
+            
+            // Update obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].x -= gameSpeed;
+                if (obstacles[i].x < -50) {
+                    obstacles.splice(i, 1);
+                    score += 10;
+                }
+            }
+            
+            // Spawn obstacles
+            if (Date.now() - lastObstacleTime > 2500) {
+                obstacles.push({
+                    x: canvas.width,
+                    y: groundY - 40,
+                    width: 20,
+                    height: 40
+                });
+                lastObstacleTime = Date.now();
+            }
+            
+            // Check collisions
+            for (let obstacle of obstacles) {
+                if (dino.x < obstacle.x + obstacle.width &&
+                    dino.x + dino.width > obstacle.x &&
+                    dino.y < obstacle.y + obstacle.height &&
+                    dino.y + dino.height > obstacle.y) {
+                    
+                    lives--;
+                    obstacles.splice(obstacles.indexOf(obstacle), 1);
+                    
+                    if (lives <= 0) {
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+            
+            // Draw everything
+            drawGame();
+            score++;
+            
+            requestAnimationFrame(updateGame);
+        }
+        
+        function drawGame() {
+            // Ground
+            ctx.fillStyle = '#8D6E63';
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+            
+            // Dino (you!)
+            ctx.fillStyle = dino.color;
+            ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+            
+            // Beard
+            ctx.fillStyle = '#2A1A0A';
+            ctx.fillRect(dino.x + 5, dino.y + 15, 30, 8);
+            
+            // Obstacles
+            ctx.fillStyle = '#2E7D32';
+            for (let obstacle of obstacles) {
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            }
+            
+            // Score
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText(`Score: ${score} | Lives: ${lives}`, 20, 30);
+        }
+        
+        function startGame() {
+            if (gameRunning) {
+                gameRunning = false;
+                return;
+            }
+            
+            score = 0;
+            lives = 3;
+            obstacles = [];
+            dino.y = groundY - dino.height;
+            dino.velocityY = 0;
+            dino.onGround = true;
+            lastObstacleTime = Date.now();
+            
+            gameRunning = true;
+            updateGame();
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            alert(`Game Over! Score: ${score}`);
+        }
+        
+        // Keyboard backup
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                executeJump();
+                debugLog('Keyboard jump');
+            }
+        });
+        
+        // Initialize
+        debugLog('Voice control system ready');
+        debugLog('Click "Enable Voice" and allow microphone access');
+        debugLog('Then say "JUMP" clearly to test');
+    </script>
+</body>
+</html>

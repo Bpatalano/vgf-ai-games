@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 INSTANT Voice Response</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #222;
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #fff;
+            background: #87CEEB;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        .status {
+            background: #333;
+            padding: 15px;
+            margin: 20px auto;
+            border-radius: 10px;
+            max-width: 500px;
+            font-size: 18px;
+        }
+        
+        .listening { background: #4CAF50; }
+        .detected { background: #FF9800; }
+        .instant { background: #E91E63; }
+    </style>
+</head>
+<body>
+    <h1>🎤 INSTANT Voice Response</h1>
+    
+    <canvas id="gameCanvas" width="600" height="300"></canvas>
+    
+    <div>
+        <button onclick="startVoice()">🎤 Start Voice</button>
+        <button onclick="stopVoice()">🔇 Stop Voice</button>
+        <button onclick="manualJump()">🦘 Manual Jump</button>
+    </div>
+    
+    <div class="status" id="status">Click "Start Voice" for INSTANT response</div>
+    
+    <div style="margin: 20px; font-size: 14px;">
+        <p><strong>INSTANT RESPONSE MODE:</strong></p>
+        <p>🎯 Responds to first sound of "JUMP" - no waiting!</p>
+        <p>🔥 Uses interim results for immediate reaction</p>
+        <p>⚡ Should jump within 200-300ms of speaking</p>
+    </div>
+
+    <script>
+        let canvas = document.getElementById('gameCanvas');
+        let ctx = canvas.getContext('2d');
+        let recognition = null;
+        let isVoiceActive = false;
+        let lastJumpTime = 0;
+        let jumpCooldown = 500; // Prevent spam jumping
+        
+        // Simple character
+        let character = {
+            x: 100,
+            y: 200,
+            width: 40,
+            height: 40,
+            jumpHeight: 0,
+            isJumping: false
+        };
+        
+        // INSTANT voice recognition with interim results
+        function startVoice() {
+            if (isVoiceActive) return;
+            
+            if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
+                updateStatus('❌ Voice not supported');
+                return;
+            }
+            
+            try {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                // INSTANT SETTINGS - Use interim results for speed
+                recognition.continuous = true;
+                recognition.interimResults = true; // KEY: This gives us instant results
+                recognition.lang = 'en-US';
+                recognition.maxAlternatives = 1;
+                
+                recognition.onstart = function() {
+                    isVoiceActive = true;
+                    updateStatus('🎤 LISTENING - Say "JUMP" for INSTANT response!', 'listening');
+                };
+                
+                recognition.onresult = function(event) {
+                    const currentTime = Date.now();
+                    
+                    // Process ALL results (interim and final) for instant response
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const result = event.results[i];
+                        const transcript = result[0].transcript.toLowerCase().trim();
+                        const isFinal = result.isFinal;
+                        
+                        // Show what we're hearing in real-time
+                        if (transcript) {
+                            updateStatus(`Hearing: "${transcript}" ${isFinal ? '(FINAL)' : '(interim)'}`, 
+                                       isFinal ? 'detected' : 'instant');
+                        }
+                        
+                        // INSTANT JUMP on first detection of jump words
+                        if (isJumpWord(transcript) && canJump(currentTime)) {
+                            jump();
+                            lastJumpTime = currentTime;
+                            updateStatus(`⚡ INSTANT JUMP! "${transcript}"`, 'instant');
+                            
+                            // Brief pause to show success
+                            setTimeout(() => {
+                                if (isVoiceActive) {
+                                    updateStatus('🎤 LISTENING - Say "JUMP" for INSTANT response!', 'listening');
+                                }
+                            }, 1000);
+                            
+                            break; // Stop processing more results
+                        }
+                    }
+                };
+                
+                recognition.onerror = function(event) {
+                    console.log('Voice error:', event.error);
+                    
+                    if (event.error === 'not-allowed') {
+                        updateStatus('❌ Microphone permission denied');
+                        isVoiceActive = false;
+                        return;
+                    }
+                    
+                    if (event.error === 'no-speech') {
+                        // This is normal, just continue listening
+                        return;
+                    }
+                    
+                    updateStatus(`Voice error: ${event.error} - Still listening...`);
+                };
+                
+                recognition.onend = function() {
+                    // Auto-restart to keep listening
+                    if (isVoiceActive) {
+                        setTimeout(() => {
+                            if (isVoiceActive) {
+                                try {
+                                    recognition.start();
+                                } catch (e) {
+                                    updateStatus('Restarting voice...');
+                                    setTimeout(() => startVoice(), 1000);
+                                }
+                            }
+                        }, 100);
+                    }
+                };
+                
+                recognition.start();
+                
+            } catch (error) {
+                updateStatus('❌ Voice error: ' + error.message);
+            }
+        }
+        
+        function isJumpWord(transcript) {
+            // Check for jump words - including partial matches for speed
+            const jumpWords = ['jump', 'jum', 'hop', 'up', 'leap', 'go'];
+            
+            return jumpWords.some(word => 
+                transcript.includes(word) || 
+                transcript.startsWith(word.substring(0, 2)) // Even faster - match first 2 letters
+            );
+        }
+        
+        function canJump(currentTime) {
+            return (currentTime - lastJumpTime) > jumpCooldown;
+        }
+        
+        function stopVoice() {
+            isVoiceActive = false;
+            if (recognition) {
+                recognition.stop();
+            }
+            updateStatus('🔇 Voice stopped');
+        }
+        
+        function jump() {
+            if (!character.isJumping) {
+                character.isJumping = true;
+                character.jumpHeight = 80;
+                
+                // Animate jump
+                let jumpAnimation = setInterval(() => {
+                    character.jumpHeight -= 4;
+                    if (character.jumpHeight <= 0) {
+                        character.jumpHeight = 0;
+                        character.isJumping = false;
+                        clearInterval(jumpAnimation);
+                    }
+                    draw();
+                }, 20);
+                
+                console.log('JUMP executed at:', new Date().toLocaleTimeString());
+            }
+        }
+        
+        function manualJump() {
+            jump();
+            updateStatus('🦘 Manual jump!', 'detected');
+        }
+        
+        function updateStatus(message, className = '') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${className}`;
+            console.log(`[${new Date().toLocaleTimeString()}] ${message}`);
+        }
+        
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw ground
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 250, canvas.width, 50);
+            
+            // Draw character (you with beard!)
+            const charY = character.y - character.jumpHeight;
+            
+            // Body
+            ctx.fillStyle = '#FF6B6B';
+            ctx.fillRect(character.x, charY, character.width, character.height);
+            
+            // Head
+            ctx.fillStyle = '#FFDBAC';
+            ctx.fillRect(character.x + 5, charY - 20, 30, 20);
+            
+            // Beard
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(character.x + 8, charY - 8, 24, 12);
+            
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(character.x + 10, charY - 15, 3, 3);
+            ctx.fillRect(character.x + 20, charY - 15, 3, 3);
+            
+            // Jump indicator
+            if (character.isJumping) {
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 20px Arial';
+                ctx.fillText('⚡ INSTANT!', character.x - 10, charY - 30);
+            }
+        }
+        
+        // Initial draw
+        draw();
+        
+        // Keyboard backup
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                manualJump();
+            }
+        });
+        
+        console.log('INSTANT voice control ready');
+        console.log('Uses interim results for immediate response');
+        console.log('Should respond within 200-300ms of speech start');
+    </script>
+</body>
+</html>

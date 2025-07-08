@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 Basic Voice Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #222;
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 15px;
+        }
+        
+        #output {
+            background: #111;
+            color: #0f0;
+            padding: 20px;
+            margin: 20px auto;
+            border-radius: 10px;
+            max-width: 600px;
+            font-family: monospace;
+            font-size: 18px;
+            min-height: 200px;
+        }
+        
+        .listening {
+            background: #4CAF50 !important;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🎤 BASIC Voice Recognition Test</h1>
+    
+    <button onclick="startListening()" id="startBtn">🎤 START LISTENING</button>
+    <button onclick="stopListening()">🛑 STOP</button>
+    
+    <div id="output">
+        Click "START LISTENING" and then speak clearly...<br>
+        Try saying: "HELLO", "TEST", "JUMP"<br><br>
+        This will show if voice recognition works at all.
+    </div>
+
+    <script>
+        let recognition = null;
+        let isListening = false;
+        
+        function log(message) {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `[${timestamp}] ${message}<br>`;
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+        
+        function startListening() {
+            if (isListening) {
+                log('Already listening...');
+                return;
+            }
+            
+            // Clear previous output
+            document.getElementById('output').innerHTML = 'Starting voice recognition...<br>';
+            
+            try {
+                // Create recognition object
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                
+                if (!SpeechRecognition) {
+                    log('❌ Speech Recognition not supported in this browser');
+                    return;
+                }
+                
+                recognition = new SpeechRecognition();
+                
+                // Basic settings that should work
+                recognition.continuous = false;  // Single recognition session
+                recognition.interimResults = true;  // Show partial results
+                recognition.lang = 'en-US';
+                recognition.maxAlternatives = 1;
+                
+                // Event handlers
+                recognition.onstart = function() {
+                    isListening = true;
+                    log('🎤 LISTENING - Speak now!');
+                    document.getElementById('startBtn').className = 'listening';
+                    document.getElementById('startBtn').textContent = '🎤 LISTENING...';
+                };
+                
+                recognition.onresult = function(event) {
+                    log('✅ Got voice result!');
+                    
+                    for (let i = 0; i < event.results.length; i++) {
+                        const result = event.results[i];
+                        const transcript = result[0].transcript;
+                        const confidence = result[0].confidence;
+                        const isFinal = result.isFinal;
+                        
+                        log(`${isFinal ? 'FINAL' : 'interim'}: "${transcript}" (${confidence ? Math.round(confidence * 100) + '%' : 'no confidence'})`);
+                        
+                        if (isFinal) {
+                            log('🎉 Voice recognition successful!');
+                            if (transcript.toLowerCase().includes('jump')) {
+                                log('🦘 JUMP detected!');
+                            }
+                        }
+                    }
+                };
+                
+                recognition.onend = function() {
+                    isListening = false;
+                    log('Voice recognition ended');
+                    document.getElementById('startBtn').className = '';
+                    document.getElementById('startBtn').textContent = '🎤 START LISTENING';
+                };
+                
+                recognition.onerror = function(event) {
+                    isListening = false;
+                    log(`❌ Error: ${event.error}`);
+                    
+                    switch(event.error) {
+                        case 'no-speech':
+                            log('No speech detected - try speaking louder or closer to microphone');
+                            break;
+                        case 'audio-capture':
+                            log('No microphone found or microphone is being used by another app');
+                            break;
+                        case 'not-allowed':
+                            log('Microphone permission denied');
+                            break;
+                        case 'network':
+                            log('Network error - check internet connection');
+                            break;
+                        default:
+                            log(`Unknown error: ${event.error}`);
+                    }
+                    
+                    document.getElementById('startBtn').className = '';
+                    document.getElementById('startBtn').textContent = '🎤 START LISTENING';
+                };
+                
+                // Start recognition
+                log('Starting recognition...');
+                recognition.start();
+                
+            } catch (error) {
+                log(`❌ Failed to start: ${error.message}`);
+                isListening = false;
+            }
+        }
+        
+        function stopListening() {
+            if (recognition && isListening) {
+                recognition.stop();
+                log('Stopping recognition...');
+            }
+        }
+        
+        // Initialize
+        log('Basic voice test ready');
+        log('Microphone permission: ✅ (already granted)');
+        log('Click START LISTENING and speak clearly');
+    </script>
+</body>
+</html>
